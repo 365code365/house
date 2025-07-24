@@ -1,82 +1,185 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/db'
+import { prisma } from '@/lib/db'
 import type { SalesControl } from '@/lib/db'
 
 // GET - 獲取項目的銷控數據
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const projectId = params.id
+    const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const building = searchParams.get('building')
-    const status = searchParams.get('status')
-    const search = searchParams.get('search')
+    const salesStatus = searchParams.get('salesStatus')
+    const search = searchParams.get('searchTerm')
+    const salesPerson = searchParams.get('salesPerson')
+    const mediaSource = searchParams.get('mediaSource')
+    const customChange = searchParams.get('customChange')
+    const buyer = searchParams.get('buyer')
+    const minPrice = searchParams.get('minPrice')
+    const maxPrice = searchParams.get('maxPrice')
+    const minArea = searchParams.get('minArea')
+    const maxArea = searchParams.get('maxArea')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
     
     // 驗證項目是否存在
-    const projectExists = await executeQuery(
-      'SELECT id FROM project WHERE id = ?',
-      [projectId]
-    )
+    const projectExists = await prisma.project.findUnique({
+      where: { id: projectId }
+    })
     
-    if (!Array.isArray(projectExists) || projectExists.length === 0) {
+    if (!projectExists) {
       return NextResponse.json({ error: '項目不存在' }, { status: 404 })
     }
     
     // 構建查詢條件
-    let whereClause = 'WHERE project_id = ?'
-    const queryParams: any[] = [projectId]
-    
-    if (building) {
-      whereClause += ' AND building = ?'
-      queryParams.push(building)
+    const whereConditions: any = {
+      projectId: projectId
     }
     
-    if (status) {
-      whereClause += ' AND sales_status = ?'
-      queryParams.push(status)
+    if (building) {
+      whereConditions.building = building
+    }
+    
+    if (salesStatus) {
+      // 將前端的中文狀態轉換為枚舉值
+      const statusMap: { [key: string]: string } = {
+        '售出': 'SOLD',
+        '訂金': 'DEPOSIT',
+        '不銷售': 'NOT_SALE',
+        '未售出': 'AVAILABLE'
+      }
+      whereConditions.salesStatus = statusMap[salesStatus] || salesStatus
+    }
+    
+    if (mediaSource) {
+      whereConditions.mediaSource = { contains: mediaSource }
+    }
+    
+    if (customChange) {
+      whereConditions.customChange = customChange
+    }
+    
+    if (buyer) {
+      whereConditions.buyer = { contains: buyer }
+    }
+    
+    // 价格范围筛选
+    if (minPrice || maxPrice) {
+      whereConditions.unitPrice = {}
+      if (minPrice) whereConditions.unitPrice.gte = parseFloat(minPrice)
+      if (maxPrice) whereConditions.unitPrice.lte = parseFloat(maxPrice)
+    }
+    
+    // 面积范围筛选
+    if (minArea || maxArea) {
+      whereConditions.area = {}
+      if (minArea) whereConditions.area.gte = parseFloat(minArea)
+      if (maxArea) whereConditions.area.lte = parseFloat(maxArea)
+    }
+    
+    // 日期范围筛选
+    if (startDate || endDate) {
+      whereConditions.depositDate = {}
+      if (startDate) whereConditions.depositDate.gte = new Date(startDate)
+      if (endDate) whereConditions.depositDate.lte = new Date(endDate)
+    }
+    
+    // 销售人员筛选
+    if (salesPerson) {
+      whereConditions.salesPersonnel = {
+        name: { contains: salesPerson }
+      }
     }
     
     if (search) {
-      whereClause += ' AND (house_no LIKE ? OR unit LIKE ? OR buyer LIKE ?)'
-      const searchPattern = `%${search}%`
-      queryParams.push(searchPattern, searchPattern, searchPattern)
+      whereConditions.OR = [
+        { houseNo: { contains: search } },
+        { unit: { contains: search } },
+        { buyer: { contains: search } }
+      ]
     }
     
-    const query = `
-      SELECT 
-        id,
-        project_id as projectId,
-        building,
-        floor,
-        house_no as houseNo,
-        unit,
-        area,
-        unit_price,
-        house_total,
-        total_with_parking,
-        sales_status as status,
-        sales_date,
-        deposit_date,
-        sign_date,
-        buyer,
-        sales_person_id,
-        parking_ids,
-        custom_change,
-        custom_change_content,
-        media_source,
-        introducer,
-        remark,
-        base_price,
-        premium_rate,
-        created_at as createdAt,
-        updated_at as updatedAt
-      FROM sales_control 
-      ${whereClause}
-      ORDER BY building, floor, house_no
-    `
+    // 獲取銷控數據，包含關聯的銷售人員信息
+    const salesControl = await prisma.salesControl.findMany({
+      where: whereConditions,
+      include: {
+        salesPersonnel: {
+          select: {
+            name: true,
+            employeeNo: true
+          }
+        }
+      },
+      orderBy: [
+        { building: 'asc' },
+        { floor: 'asc' },
+        { houseNo: 'asc' }
+      ]
+    })
     
-    const salesControl = await executeQuery(query, queryParams)
+    // 為每條記錄獲取停車位詳細信息
+    const salesControlWithParkingDetails = await Promise.all(
+      salesControl.map(async (record) => {
+        let parkingSpaces: any[] = []
+        
+        if (record.parkingIds) {
+          const parkingIdArray = record.parkingIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+          
+          if (parkingIdArray.length > 0) {
+            const parkingResult = await prisma.parkingSpace.findMany({
+              where: {
+                id: { in: parkingIdArray },
+                projectId: projectId
+              },
+              select: {
+                id: true,
+                parkingNo: true,
+                type: true,
+                price: true,
+                salesStatus: true,
+                salesDate: true,
+                buyer: true,
+                remark: true
+              }
+            })
+            parkingSpaces = parkingResult
+          }
+        }
+        
+        return {
+          id: record.id,
+          project_id: record.projectId,
+          building: record.building,
+          floor: record.floor,
+          unit: record.unit,
+          house_no: record.houseNo,
+          area: record.area,
+          unit_price: record.unitPrice,
+          house_total: record.houseTotal,
+          total_with_parking: record.totalWithParking,
+          base_price: record.basePrice,
+          premium_rate: record.premiumRate,
+          sales_status: record.salesStatus,
+          sales_date: record.salesDate,
+          deposit_date: record.depositDate,
+          sign_date: record.signDate,
+          buyer: record.buyer,
+          sales_id: record.salesId,
+          sales_person_name: record.salesPersonnel?.name,
+          sales_person_employee_no: record.salesPersonnel?.employeeNo,
+          parking_ids: record.parkingIds,
+          custom_change: record.customChange,
+          custom_change_content: record.customChangeContent,
+          media_source: record.mediaSource,
+          introducer: record.introducer,
+          notes: record.notes,
+          created_at: record.createdAt,
+          updated_at: record.updatedAt,
+          parking_spaces: parkingSpaces
+        }
+      })
+    )
     
-    return NextResponse.json(salesControl)
+    return NextResponse.json(salesControlWithParkingDetails)
   } catch (error) {
     console.error('獲取銷控數據失敗:', error)
     return NextResponse.json({ error: '獲取銷控數據失敗' }, { status: 500 })
@@ -86,7 +189,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // POST - 創建新的銷控記錄
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const projectId = params.id
+    const projectId = parseInt(params.id)
     const body = await request.json()
     const {
       building,
@@ -97,103 +200,118 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       unitPrice,
       houseTotal,
       totalWithParking,
-      salesStatus = '未售出',
+      salesStatus = 'AVAILABLE',
       salesDate,
       depositDate,
       signDate,
       buyer,
-      salesPersonId,
+      salesId,
       parkingIds,
       customChange,
       customChangeContent,
       mediaSource,
       introducer,
-      remark,
+      notes,
       basePrice,
       premiumRate
     } = body
 
     // 驗證必填字段
-    if (!building || !floor || !houseNo || !unit) {
+    if (!building || floor === undefined || !houseNo || !unit) {
       return NextResponse.json({ error: '缺少必填字段' }, { status: 400 })
     }
     
     // 驗證項目是否存在
-    const projectExists = await executeQuery(
-      'SELECT id FROM project WHERE id = ?',
-      [projectId]
-    )
+    const projectExists = await prisma.project.findUnique({
+      where: { id: projectId }
+    })
 
-    if (!Array.isArray(projectExists) || projectExists.length === 0) {
+    if (!projectExists) {
       return NextResponse.json({ error: '項目不存在' }, { status: 404 })
     }
 
     // 檢查戶號是否已存在
-    const existingUnit = await executeQuery(
-      'SELECT id FROM sales_control WHERE project_id = ? AND building = ? AND floor = ? AND house_no = ?',
-      [projectId, building, floor, houseNo]
-    )
+    const existingUnit = await prisma.salesControl.findFirst({
+      where: {
+        projectId,
+        building,
+        floor,
+        houseNo
+      }
+    })
     
-    if (Array.isArray(existingUnit) && existingUnit.length > 0) {
+    if (existingUnit) {
       return NextResponse.json({ error: '該戶號已存在' }, { status: 400 })
     }
     
-    // 創建銷控記錄
-    const result = await executeQuery(
-      `INSERT INTO sales_control (
-        project_id, building, floor, house_no, unit, area, unit_price, 
-        house_total, total_with_parking, sales_status, sales_date, deposit_date, 
-        sign_date, buyer, sales_person_id, parking_ids, custom_change, 
-        custom_change_content, media_source, introducer, remark, base_price, premium_rate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        projectId, building, floor, houseNo, unit, area || null, unitPrice || null,
-        houseTotal || null, totalWithParking || null, salesStatus, salesDate || null, 
-        depositDate || null, signDate || null, buyer || null, salesPersonId || null, 
-        parkingIds || null, customChange || false, customChangeContent || null, 
-        mediaSource || null, introducer || null, remark || null, basePrice || null, 
-        premiumRate || null
-      ]
-    )
-
-    if (result && typeof result === 'object' && 'insertId' in result) {
-      // 獲取創建的記錄
-      const newRecord = await executeQuery(
-        `SELECT 
-          id,
-          project_id as projectId,
-          building,
-          floor,
-          house_no as houseNo,
-          unit,
-          area,
-          unit_price,
-          house_total,
-          total_with_parking,
-          sales_status as status,
-          sales_date,
-          deposit_date,
-          sign_date,
-          buyer,
-          sales_person_id,
-          parking_ids,
-          custom_change,
-          custom_change_content,
-          media_source,
-          introducer,
-          remark,
-          base_price,
-          premium_rate,
-          created_at as createdAt,
-          updated_at as updatedAt
-        FROM sales_control WHERE id = ?`,
-        [result.insertId]
-      )
-      
-      return NextResponse.json(Array.isArray(newRecord) ? newRecord[0] : newRecord, { status: 201 })
+    // 將前端的中文狀態轉換為枚舉值
+    const statusMap: { [key: string]: string } = {
+      '售出': 'SOLD',
+      '訂金': 'DEPOSIT',
+      '不銷售': 'NOT_SALE',
+      '未售出': 'AVAILABLE'
     }
+    const mappedSalesStatus = statusMap[salesStatus] || salesStatus
     
-    return NextResponse.json({ error: '創建銷控記錄失敗' }, { status: 500 })
+    // 創建銷控記錄
+    const newRecord = await prisma.salesControl.create({
+      data: {
+        projectId,
+        building,
+        floor,
+        houseNo,
+        unit,
+        area: area ? parseFloat(area) : null,
+        unitPrice: unitPrice ? parseFloat(unitPrice) : null,
+        houseTotal: houseTotal ? parseFloat(houseTotal) : null,
+        totalWithParking: totalWithParking ? parseFloat(totalWithParking) : null,
+        salesStatus: mappedSalesStatus as any,
+        salesDate: salesDate ? new Date(salesDate) : null,
+        depositDate: depositDate ? new Date(depositDate) : null,
+        signDate: signDate ? new Date(signDate) : null,
+        buyer: buyer || null,
+        salesId: salesId || null,
+        parkingIds: parkingIds || null,
+        customChange: customChange || false,
+        customChangeContent: customChangeContent || null,
+        mediaSource: mediaSource || null,
+        introducer: introducer || null,
+        notes: notes || null,
+        basePrice: basePrice ? parseFloat(basePrice) : null,
+        premiumRate: premiumRate ? parseFloat(premiumRate) : null
+      }
+    })
+    
+    // 返回創建的記錄
+    return NextResponse.json({
+      id: newRecord.id,
+      projectId: newRecord.projectId,
+      building: newRecord.building,
+      floor: newRecord.floor,
+      houseNo: newRecord.houseNo,
+      unit: newRecord.unit,
+      area: newRecord.area,
+      unit_price: newRecord.unitPrice,
+      house_total: newRecord.houseTotal,
+      total_with_parking: newRecord.totalWithParking,
+      status: newRecord.salesStatus,
+      sales_date: newRecord.salesDate,
+      deposit_date: newRecord.depositDate,
+      sign_date: newRecord.signDate,
+      buyer: newRecord.buyer,
+      sales_id: newRecord.salesId,
+      parking_ids: newRecord.parkingIds,
+      custom_change: newRecord.customChange,
+      custom_change_content: newRecord.customChangeContent,
+      media_source: newRecord.mediaSource,
+      introducer: newRecord.introducer,
+      notes: newRecord.notes,
+      base_price: newRecord.basePrice,
+      premium_rate: newRecord.premiumRate,
+      createdAt: newRecord.createdAt,
+      updatedAt: newRecord.updatedAt
+    }, { status: 201 })
+    
   } catch (error) {
     console.error('創建銷控記錄失敗:', error)
     return NextResponse.json({ error: '創建銷控記錄失敗' }, { status: 500 })

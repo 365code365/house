@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +31,8 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CalendarDays, Clock, Users, Phone, Mail, MapPin, Plus, Search, Filter, Edit, Trash2 } from 'lucide-react'
+import CalendarView from '@/components/appointments/CalendarView'
+import { CalendarDays, Clock, Users, Phone, Mail, MapPin, Plus, Search, Filter, Edit, Trash2, Calendar, List } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Appointment {
@@ -40,12 +41,11 @@ interface Appointment {
   customer_name: string
   customer_phone: string
   customer_email?: string
-  date: string
-  time: string
+  start_time: string
+  end_time: string
   status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-  purpose: string
-  sales_person?: string
-  notes?: string
+  sales_id?: string
+  remark?: string
   created_at: string
   updated_at: string
 }
@@ -86,6 +86,11 @@ export default function AppointmentsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<Date | undefined>()
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>()
+  
+  // 滚动位置保持
+  const scrollPositionRef = useRef<number>(0)
   
   // 表單狀態
   const [formData, setFormData] = useState({
@@ -94,6 +99,8 @@ export default function AppointmentsPage() {
     customerEmail: '',
     appointmentDate: undefined as Date | undefined,
     appointmentTime: '',
+    endAppointmentDate: undefined as Date | undefined,
+    endAppointmentTime: '',
     purpose: '',
     salesPerson: '',
     notes: ''
@@ -151,11 +158,31 @@ export default function AppointmentsPage() {
       customerEmail: '',
       appointmentDate: undefined,
       appointmentTime: '',
+      endAppointmentDate: undefined,
+      endAppointmentTime: '',
       purpose: '',
       salesPerson: '',
       notes: ''
     })
     setEditingAppointment(null)
+  }
+  
+  // 处理Dialog打开时记录滚动位置
+  const handleDialogOpen = () => {
+    scrollPositionRef.current = window.scrollY
+    setIsDialogOpen(true)
+  }
+  
+  // 处理Dialog关闭时恢复滚动位置
+  const handleDialogClose = () => {
+    setIsDialogOpen(false)
+    // 使用setTimeout确保Dialog完全关闭后再恢复滚动位置
+    setTimeout(() => {
+      window.scrollTo({
+        top: scrollPositionRef.current,
+        behavior: 'smooth'
+      })
+    }, 100)
   }
   
   // 處理新增/編輯預約
@@ -174,6 +201,8 @@ export default function AppointmentsPage() {
         customer_email: formData.customerEmail,
         date: formData.appointmentDate?.toISOString().split('T')[0],
         time: formData.appointmentTime,
+        end_date: formData.endAppointmentDate?.toISOString().split('T')[0],
+        end_time: formData.endAppointmentTime,
         purpose: formData.purpose,
         sales_person: formData.salesPerson,
         notes: formData.notes
@@ -195,7 +224,7 @@ export default function AppointmentsPage() {
       
       if (response.ok) {
         toast.success(editingAppointment ? '預約更新成功' : '預約創建成功')
-        setIsDialogOpen(false)
+        handleDialogClose()
         resetForm()
         fetchAppointments()
         fetchStats()
@@ -213,16 +242,36 @@ export default function AppointmentsPage() {
   const handleEdit = (appointment: Appointment) => {
     setEditingAppointment(appointment)
     
-    // 安全地處理日期轉換
+    // 安全地處理日期和時間轉換
     let appointmentDate: Date | undefined
+    let appointmentTime = ''
+    let endAppointmentDate: Date | undefined
+    let endAppointmentTime = ''
+    
     try {
-      if (appointment.date) {
-        const dateObj = new Date(appointment.date)
-        appointmentDate = isNaN(dateObj.getTime()) ? undefined : dateObj
+      if (appointment.start_time) {
+        const startTimeObj = new Date(appointment.start_time)
+        if (!isNaN(startTimeObj.getTime())) {
+          appointmentDate = startTimeObj
+          // 提取時間部分 (HH:MM 格式)
+          appointmentTime = startTimeObj.toTimeString().slice(0, 5)
+        }
+      }
+      
+      if (appointment.end_time) {
+        const endTimeObj = new Date(appointment.end_time)
+        if (!isNaN(endTimeObj.getTime())) {
+          endAppointmentDate = endTimeObj
+          // 提取時間部分 (HH:MM 格式)
+          endAppointmentTime = endTimeObj.toTimeString().slice(0, 5)
+        }
       }
     } catch (error) {
-      console.error('日期轉換錯誤:', error)
+      console.error('日期時間轉換錯誤:', error)
       appointmentDate = undefined
+      appointmentTime = ''
+      endAppointmentDate = undefined
+      endAppointmentTime = ''
     }
     
     setFormData({
@@ -230,12 +279,14 @@ export default function AppointmentsPage() {
       customerPhone: appointment.customer_phone,
       customerEmail: appointment.customer_email || '',
       appointmentDate,
-      appointmentTime: appointment.time,
-      purpose: appointment.purpose,
-      salesPerson: appointment.sales_person || '',
-      notes: appointment.notes || ''
+      appointmentTime,
+      endAppointmentDate,
+      endAppointmentTime,
+      purpose: appointment.remark || '',
+      salesPerson: appointment.sales_id || '',
+      notes: appointment.remark || ''
     })
-    setIsDialogOpen(true)
+    handleDialogOpen()
   }
   
   // 處理刪除
@@ -300,13 +351,43 @@ export default function AppointmentsPage() {
           <h1 className="text-3xl font-bold">預約管理</h1>
           <p className="text-muted-foreground">管理客戶預約和參觀安排</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" />
-              新增預約
+        <div className="flex items-center gap-2">
+          {/* 視圖切換按鈕 */}
+          <div className="flex items-center border rounded-lg p-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4 mr-1" />
+              列表
             </Button>
-          </DialogTrigger>
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              日曆
+            </Button>
+          </div>
+          
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (open) {
+              handleDialogOpen()
+            } else {
+              handleDialogClose()
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                resetForm()
+                handleDialogOpen()
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                新增預約
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingAppointment ? '編輯預約' : '新增預約'}</DialogTitle>
@@ -345,7 +426,7 @@ export default function AppointmentsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>預約日期 *</Label>
+                  <Label>开始預約日期 *</Label>
                   <DatePicker
                     date={formData.appointmentDate}
                     onDateChange={(date) => setFormData({ ...formData, appointmentDate: date })}
@@ -353,13 +434,33 @@ export default function AppointmentsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="appointmentTime">預約時間 *</Label>
+                  <Label htmlFor="appointmentTime">开始預約時間 *</Label>
                   <Input
                     id="appointmentTime"
                     type="time"
                     value={formData.appointmentTime}
                     onChange={(e) => setFormData({ ...formData, appointmentTime: e.target.value })}
                     required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>最晚預約日期</Label>
+                  <DatePicker
+                    date={formData.endAppointmentDate}
+                    onDateChange={(date) => setFormData({ ...formData, endAppointmentDate: date })}
+                    placeholder="選擇結束日期"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endAppointmentTime">最晚預約時間</Label>
+                  <Input
+                    id="endAppointmentTime"
+                    type="time"
+                    value={formData.endAppointmentTime}
+                    onChange={(e) => setFormData({ ...formData, endAppointmentTime: e.target.value })}
                   />
                 </div>
               </div>
@@ -395,7 +496,7 @@ export default function AppointmentsPage() {
               </div>
               
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={handleDialogClose}>
                   取消
                 </Button>
                 <Button type="submit">
@@ -405,6 +506,7 @@ export default function AppointmentsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
       
       {/* 統計卡片 */}
@@ -501,103 +603,124 @@ export default function AppointmentsPage() {
         )}
       </div>
       
-      {/* 預約列表 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>預約列表</CardTitle>
-          <CardDescription>管理所有客戶預約記錄</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>客戶資訊</TableHead>
-                <TableHead>預約時間</TableHead>
-                <TableHead>預約目的</TableHead>
-                <TableHead>負責業務</TableHead>
-                <TableHead>狀態</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {appointments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    暫無預約記錄
-                  </TableCell>
-                </TableRow>
-              ) : (
-                appointments.map((appointment) => (
-                  <TableRow key={appointment.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{appointment.customer_name}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {appointment.customer_phone}
-                        </div>
-                        {appointment.customer_email && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {appointment.customer_email}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{appointment.date}</div>
-                        <div className="text-sm text-muted-foreground">{appointment.time}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{appointment.purpose}</TableCell>
-                    <TableCell>{appointment.sales_person || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge className={statusColors[appointment.status]}>
-                          {statusLabels[appointment.status]}
-                        </Badge>
-                        <Select
-                          value={appointment.status}
-                          onValueChange={(value) => updateAppointmentStatus(appointment.id, value)}
-                        >
-                          <SelectTrigger className="w-[100px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="scheduled">已預約</SelectItem>
-                            <SelectItem value="completed">已完成</SelectItem>
-                            <SelectItem value="cancelled">已取消</SelectItem>
-                            <SelectItem value="no_show">未出席</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(appointment)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(appointment.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* 預約內容 - 根據視圖模式顯示 */}
+       {viewMode === 'calendar' ? (
+          <CalendarView
+             projectId={Array.isArray(params.id) ? params.id[0] : params.id}
+             appointments={appointments.map(apt => ({
+               ...apt,
+               status: apt.status === 'scheduled' ? 'PENDING' as const :
+                      apt.status === 'completed' ? 'COMPLETED' as const :
+                      apt.status === 'cancelled' ? 'CANCELLED' as const :
+                      apt.status === 'no_show' ? 'NO_SHOW' as const : 'PENDING' as const,
+               created_at: apt.created_at,
+               updated_at: apt.updated_at
+             }))}
+             onDateClick={(date) => {
+               setSelectedDate(date)
+               setFormData(prev => ({ ...prev, appointmentDate: date }))
+               handleDialogOpen()
+             }}
+             onRefresh={fetchAppointments}
+           />
+       ) : (
+         <Card>
+           <CardHeader>
+             <CardTitle>預約列表</CardTitle>
+             <CardDescription>管理所有客戶預約記錄</CardDescription>
+           </CardHeader>
+           <CardContent>
+             <Table>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>客戶資訊</TableHead>
+                   <TableHead>預約時間</TableHead>
+                   <TableHead>預約目的</TableHead>
+                   <TableHead>負責業務</TableHead>
+                   <TableHead>狀態</TableHead>
+                   <TableHead>操作</TableHead>
+                 </TableRow>
+               </TableHeader>
+               <TableBody>
+                 {appointments.length === 0 ? (
+                   <TableRow>
+                     <TableCell colSpan={6} className="text-center py-8">
+                       暫無預約記錄
+                     </TableCell>
+                   </TableRow>
+                 ) : (
+                   appointments.map((appointment) => (
+                     <TableRow key={appointment.id}>
+                       <TableCell>
+                         <div>
+                           <div className="font-medium">{appointment.customer_name}</div>
+                           <div className="text-sm text-muted-foreground flex items-center gap-1">
+                             <Phone className="h-3 w-3" />
+                             {appointment.customer_phone}
+                           </div>
+                           {appointment.customer_email && (
+                             <div className="text-sm text-muted-foreground flex items-center gap-1">
+                               <Mail className="h-3 w-3" />
+                               {appointment.customer_email}
+                             </div>
+                           )}
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         <div>
+                           <div className="font-medium">{new Date(appointment.start_time).toLocaleDateString()}</div>
+                           <div className="text-sm text-muted-foreground">{new Date(appointment.start_time).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</div>
+                         </div>
+                       </TableCell>
+                       <TableCell>{appointment.remark || '-'}</TableCell>
+                       <TableCell>{appointment.sales_id || '-'}</TableCell>
+                       <TableCell>
+                         <div className="flex items-center gap-2">
+                           <Badge className={statusColors[appointment.status]}>
+                             {statusLabels[appointment.status]}
+                           </Badge>
+                           <Select
+                             value={appointment.status}
+                             onValueChange={(value) => updateAppointmentStatus(appointment.id, value)}
+                           >
+                             <SelectTrigger className="w-[100px]">
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="scheduled">已預約</SelectItem>
+                               <SelectItem value="completed">已完成</SelectItem>
+                               <SelectItem value="cancelled">已取消</SelectItem>
+                               <SelectItem value="no_show">未出席</SelectItem>
+                             </SelectContent>
+                           </Select>
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         <div className="flex items-center gap-2">
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleEdit(appointment)}
+                           >
+                             <Edit className="h-4 w-4" />
+                           </Button>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleDelete(appointment.id)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                   ))
+                 )}
+               </TableBody>
+             </Table>
+           </CardContent>
+         </Card>
+       )}
     </div>
   )
 }

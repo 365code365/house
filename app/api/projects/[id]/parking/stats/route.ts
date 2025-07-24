@@ -8,7 +8,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     
     // 驗證項目是否存在
     const projectExists = await executeQuery(
-      'SELECT id FROM projects WHERE id = ?',
+      'SELECT id FROM project WHERE id = ?',
       [projectId]
     )
     

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, App } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import StyledComponentsRegistry from '@/lib/antd-registry'
+import QueryProvider from '@/components/providers/QueryProvider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -21,19 +22,23 @@ export default function RootLayout({
     <html lang="zh-TW">
       <body className={inter.className}>
         <StyledComponentsRegistry>
-          <ConfigProvider
-            locale={zhCN}
-            theme={{
-              token: {
-                colorPrimary: '#1890ff',
-                borderRadius: 6,
-              },
-            }}
-          >
-            <div className="min-h-screen">
-              {children}
-            </div>
-          </ConfigProvider>
+          <QueryProvider>
+            <ConfigProvider
+              locale={zhCN}
+              theme={{
+                token: {
+                  colorPrimary: '#1890ff',
+                  borderRadius: 6,
+                },
+              }}
+            >
+              <App>
+                <div className="min-h-screen">
+                  {children}
+                </div>
+              </App>
+            </ConfigProvider>
+          </QueryProvider>
         </StyledComponentsRegistry>
       </body>
     </html>

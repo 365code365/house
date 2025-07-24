@@ -13,8 +13,8 @@ interface Project {
   id: number
   name: string
   main_image?: string
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 export default function HomePage() {
@@ -208,7 +208,7 @@ export default function HomePage() {
                 >
                   <Meta
                     title={project.name}
-                    description={`建立時間：${new Date(project.created_at).toLocaleDateString('zh-TW')}`}
+                    description={`建立時間：${new Date(project.createdAt).toLocaleDateString('zh-TW')}`}
                     style={{ padding: '16px' }}
                   />
                 </Card>

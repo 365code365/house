@@ -127,14 +127,14 @@ export default function ParkingPage() {
   const handleEdit = (space: ParkingSpace) => {
     setEditingSpace(space)
     setFormData({
-      spaceNumber: space.space_number,
+      spaceNumber: space.parkingNo,
       type: space.type || '平面',
       location: space.location || '',
-      price: space.price,
-      status: space.status,
-      customerName: space.customer_name || '',
-      salesPerson: space.sales_person || '',
-      contractDate: space.contract_date || '',
+      price: Number(space.price),
+      status: space.salesStatus,
+      customerName: space.buyer || '',
+      salesPerson: space.salesId || '',
+      contractDate: space.salesDate ? space.salesDate.toISOString().split('T')[0] : '',
     })
     setIsCreateDialogOpen(true)
   }
@@ -190,12 +190,12 @@ export default function ParkingPage() {
   // 統計數據
   const stats = {
     total: parkingSpaces.length,
-    available: parkingSpaces.filter(s => s.status === 'available').length,
-    reserved: parkingSpaces.filter(s => s.status === 'reserved').length,
-    sold: parkingSpaces.filter(s => s.status === 'sold').length,
+    available: parkingSpaces.filter(s => s.salesStatus === 'AVAILABLE').length,
+    reserved: parkingSpaces.filter(s => s.salesStatus === 'DEPOSIT').length,
+    sold: parkingSpaces.filter(s => s.salesStatus === 'SOLD').length,
     totalRevenue: parkingSpaces
-      .filter(s => s.status === 'sold')
-      .reduce((sum, s) => sum + s.price, 0),
+      .filter(s => s.salesStatus === 'SOLD')
+      .reduce((sum, s) => sum + Number(s.price), 0),
   }
 
   if (loading) {
@@ -460,19 +460,19 @@ export default function ParkingPage() {
               <TableBody>
                 {parkingSpaces.map((space) => (
                   <TableRow key={space.id}>
-                    <TableCell className="font-medium">{space.space_number}</TableCell>
+                    <TableCell className="font-medium">{space.parkingNo}</TableCell>
                     <TableCell>{typeLabels[space.type as keyof typeof typeLabels]}</TableCell>
                     <TableCell>{space.location}</TableCell>
-                    <TableCell>{formatCurrency(space.price)}</TableCell>
+                    <TableCell>{formatCurrency(Number(space.price))}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[space.status as keyof typeof statusColors]}>
-                        {statusLabels[space.status as keyof typeof statusLabels]}
+                      <Badge className={statusColors[space.salesStatus as keyof typeof statusColors]}>
+                          {statusLabels[space.salesStatus as keyof typeof statusLabels]}
                       </Badge>
                     </TableCell>
-                    <TableCell>{space.customer_name || '-'}</TableCell>
-                    <TableCell>{space.sales_person || '-'}</TableCell>
-                    <TableCell>
-                      {space.contract_date ? new Date(space.contract_date).toLocaleDateString('zh-TW') : '-'}
+                    <TableCell>{space.buyer || '-'}</TableCell>
+                <TableCell>{space.salesId || '-'}</TableCell>
+                <TableCell>
+                  {space.salesDate ? new Date(space.salesDate).toLocaleDateString('zh-TW') : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">

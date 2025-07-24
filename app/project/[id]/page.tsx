@@ -29,8 +29,8 @@ interface Project {
   id: number
   name: string
   main_image?: string
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface QuickStats {
@@ -171,7 +171,10 @@ export default function ProjectPage() {
       <div style={{ marginBottom: '24px' }}>
         <Title level={2}>{project?.name}</Title>
         <Text type="secondary">
-          建立時間：{project ? new Date(project.created_at).toLocaleDateString('zh-TW') : ''}
+          建立時間：{project && project.createdAt ? (() => {
+            const date = new Date(project.createdAt)
+            return isNaN(date.getTime()) ? '資料異常' : date.toLocaleDateString('zh-TW')
+          })() : '未設定'}
         </Text>
       </div>
 

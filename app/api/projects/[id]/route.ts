@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/db'
+import { prisma } from '@/lib/db'
 
 // 獲取單個建案
 export async function GET(
@@ -16,19 +16,20 @@ export async function GET(
       )
     }
 
-    const projects = await executeQuery(
-      'SELECT * FROM project WHERE id = ?',
-      [projectId]
-    ) as any[]
+    const project = await prisma.project.findUnique({
+      where: {
+        id: projectId
+      }
+    })
 
-    if (projects.length === 0) {
+    if (!project) {
       return NextResponse.json(
         { message: '建案不存在' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(projects[0])
+    return NextResponse.json(project)
   } catch (error) {
     console.error('獲取建案資訊失敗:', error)
     return NextResponse.json(
@@ -64,12 +65,13 @@ export async function PUT(
     }
 
     // 檢查建案是否存在
-    const existingProject = await executeQuery(
-      'SELECT id FROM project WHERE id = ?',
-      [projectId]
-    ) as any[]
+    const existingProject = await prisma.project.findUnique({
+      where: {
+        id: projectId
+      }
+    })
 
-    if (existingProject.length === 0) {
+    if (!existingProject) {
       return NextResponse.json(
         { message: '建案不存在' },
         { status: 404 }
@@ -77,12 +79,16 @@ export async function PUT(
     }
 
     // 檢查名稱是否與其他建案重複
-    const duplicateProject = await executeQuery(
-      'SELECT id FROM project WHERE name = ? AND id != ?',
-      [name.trim(), projectId]
-    ) as any[]
+    const duplicateProject = await prisma.project.findFirst({
+      where: {
+        name: name.trim(),
+        id: {
+          not: projectId
+        }
+      }
+    })
 
-    if (duplicateProject.length > 0) {
+    if (duplicateProject) {
       return NextResponse.json(
         { message: '建案名稱已存在' },
         { status: 400 }
@@ -90,18 +96,16 @@ export async function PUT(
     }
 
     // 更新建案
-    await executeQuery(
-      'UPDATE project SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name.trim(), projectId]
-    )
+    const updatedProject = await prisma.project.update({
+      where: {
+        id: projectId
+      },
+      data: {
+        name: name.trim()
+      }
+    })
 
-    // 獲取更新後的建案
-    const updatedProject = await executeQuery(
-      'SELECT * FROM project WHERE id = ?',
-      [projectId]
-    ) as any[]
-
-    return NextResponse.json(updatedProject[0])
+    return NextResponse.json(updatedProject)
   } catch (error) {
     console.error('更新建案失敗:', error)
     return NextResponse.json(
@@ -127,12 +131,13 @@ export async function DELETE(
     }
 
     // 檢查建案是否存在
-    const existingProject = await executeQuery(
-      'SELECT id FROM project WHERE id = ?',
-      [projectId]
-    ) as any[]
+    const existingProject = await prisma.project.findUnique({
+      where: {
+        id: projectId
+      }
+    })
 
-    if (existingProject.length === 0) {
+    if (!existingProject) {
       return NextResponse.json(
         { message: '建案不存在' },
         { status: 404 }
@@ -140,10 +145,11 @@ export async function DELETE(
     }
 
     // 刪除建案（注意：這會級聯刪除相關數據）
-    await executeQuery(
-      'DELETE FROM project WHERE id = ?',
-      [projectId]
-    )
+    await prisma.project.delete({
+      where: {
+        id: projectId
+      }
+    })
 
     return NextResponse.json(
       { message: '建案已刪除' },

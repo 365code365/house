@@ -149,7 +149,23 @@
   background: #f3f4f6;
 }
 
+/* 固定佈局樣式 */
+.fixed-layout {
+  position: fixed;
+}
+
 /* 響應式設計 */
+@media (max-width: 1024px) {
+  /* 移動端時取消固定定位 */
+  .lg\:ml-0 {
+    margin-left: 0 !important;
+  }
+  
+  .lg\:left-0 {
+    left: 0 !important;
+  }
+}
+
 @media (max-width: 768px) {
   .grid-view {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

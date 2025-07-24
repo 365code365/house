@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/db'
+import { prisma } from '@/lib/db'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -7,9 +7,11 @@ import { existsSync } from 'fs'
 // 獲取所有建案
 export async function GET() {
   try {
-    const projects = await executeQuery(
-      'SELECT * FROM project ORDER BY created_at DESC'
-    )
+    const projects = await prisma.project.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
     return NextResponse.json(projects)
   } catch (error) {
     console.error('獲取建案列表失敗:', error)
@@ -35,12 +37,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 檢查建案名稱是否已存在
-    const existingProject = await executeQuery(
-      'SELECT id FROM project WHERE name = ?',
-      [name.trim()]
-    )
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        name: name.trim()
+      }
+    })
 
-    if (Array.isArray(existingProject) && existingProject.length > 0) {
+    if (existingProject) {
       return NextResponse.json(
         { message: '建案名稱已存在' },
         { status: 400 }
@@ -71,18 +74,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 插入新建案
-    const result = await executeQuery(
-      'INSERT INTO project (name, main_image) VALUES (?, ?)',
-      [name.trim(), imagePath]
-    ) as any
+    const newProject = await prisma.project.create({
+      data: {
+        name: name.trim(),
+        mainImage: imagePath
+      }
+    })
 
-    // 獲取新建立的建案
-    const newProject = await executeQuery(
-      'SELECT * FROM project WHERE id = ?',
-      [result.insertId]
-    ) as any[]
-
-    return NextResponse.json(newProject[0], { status: 201 })
+    return NextResponse.json(newProject, { status: 201 })
   } catch (error) {
     console.error('建立建案失敗:', error)
     return NextResponse.json(

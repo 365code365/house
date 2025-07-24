@@ -8,7 +8,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     
     // 驗證項目是否存在
     const projectExists = await executeQuery(
-      'SELECT id FROM projects WHERE id = ?',
+      'SELECT id FROM project WHERE id = ?',
       [projectId]
     )
     
@@ -20,11 +20,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const basicStatsQuery = `
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
-        COUNT(CASE WHEN status = 'no_show' THEN 1 END) as noShow
-      FROM appointments 
+        COUNT(CASE WHEN status = '待確認' THEN 1 END) as scheduled,
+        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = '已取消' THEN 1 END) as cancelled
+      FROM customer_appointment 
       WHERE project_id = ?
     `
     
@@ -34,8 +33,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // 獲取今日預約數
     const todayAppointmentsQuery = `
       SELECT COUNT(*) as count
-      FROM appointments 
-      WHERE project_id = ? AND appointment_date = CURDATE() AND status != 'cancelled'
+      FROM customer_appointment 
+      WHERE project_id = ? AND DATE(start_time) = CURDATE() AND status != '已取消'
     `
     
     const todayResult = await executeQuery(todayAppointmentsQuery, [projectId])
@@ -44,10 +43,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // 獲取即將到來的預約數（未來7天）
     const upcomingAppointmentsQuery = `
       SELECT COUNT(*) as count
-      FROM appointments 
+      FROM customer_appointment 
       WHERE project_id = ? 
-        AND appointment_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-        AND status = 'scheduled'
+        AND DATE(start_time) BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+        AND status = '待確認'
     `
     
     const upcomingResult = await executeQuery(upcomingAppointmentsQuery, [projectId])
@@ -56,45 +55,44 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // 獲取按月份分組的預約趨勢（過去12個月）
     const monthlyTrendQuery = `
       SELECT 
-        DATE_FORMAT(appointment_date, '%Y-%m') as month,
+        DATE_FORMAT(start_time, '%Y-%m') as month,
         COUNT(*) as total,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled
-      FROM appointments 
+        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = '已取消' THEN 1 END) as cancelled
+      FROM customer_appointment 
       WHERE project_id = ? 
-        AND appointment_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-      GROUP BY DATE_FORMAT(appointment_date, '%Y-%m')
+        AND start_time >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+      GROUP BY DATE_FORMAT(start_time, '%Y-%m')
       ORDER BY month
     `
     
     const monthlyTrend = await executeQuery(monthlyTrendQuery, [projectId])
     
-    // 獲取按預約目的分組的統計
-    const purposeStatsQuery = `
+    // 獲取按備註分組的統計
+    const remarkStatsQuery = `
       SELECT 
-        purpose,
+        remark,
         COUNT(*) as count,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
-      FROM appointments 
-      WHERE project_id = ?
-      GROUP BY purpose
+        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed
+      FROM customer_appointment 
+      WHERE project_id = ? AND remark IS NOT NULL AND remark != ''
+      GROUP BY remark
       ORDER BY count DESC
       LIMIT 10
     `
     
-    const purposeStats = await executeQuery(purposeStatsQuery, [projectId])
+    const remarkStats = await executeQuery(remarkStatsQuery, [projectId])
     
     // 獲取按業務人員分組的統計
     const salesPersonStatsQuery = `
       SELECT 
-        sales_person,
+        sales_id,
         COUNT(*) as total,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
-        COUNT(CASE WHEN status = 'no_show' THEN 1 END) as noShow
-      FROM appointments 
-      WHERE project_id = ? AND sales_person IS NOT NULL AND sales_person != ''
-      GROUP BY sales_person
+        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = '已取消' THEN 1 END) as cancelled
+      FROM customer_appointment 
+      WHERE project_id = ? AND sales_id IS NOT NULL AND sales_id != ''
+      GROUP BY sales_id
       ORDER BY total DESC
     `
     
@@ -104,24 +102,24 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const timeSlotStatsQuery = `
       SELECT 
         CASE 
-          WHEN TIME(appointment_time) BETWEEN '09:00:00' AND '11:59:59' THEN '上午 (09:00-12:00)'
-          WHEN TIME(appointment_time) BETWEEN '12:00:00' AND '13:59:59' THEN '中午 (12:00-14:00)'
-          WHEN TIME(appointment_time) BETWEEN '14:00:00' AND '17:59:59' THEN '下午 (14:00-18:00)'
-          WHEN TIME(appointment_time) BETWEEN '18:00:00' AND '20:59:59' THEN '晚上 (18:00-21:00)'
+          WHEN TIME(start_time) BETWEEN '09:00:00' AND '11:59:59' THEN '上午 (09:00-12:00)'
+          WHEN TIME(start_time) BETWEEN '12:00:00' AND '13:59:59' THEN '中午 (12:00-14:00)'
+          WHEN TIME(start_time) BETWEEN '14:00:00' AND '17:59:59' THEN '下午 (14:00-18:00)'
+          WHEN TIME(start_time) BETWEEN '18:00:00' AND '20:59:59' THEN '晚上 (18:00-21:00)'
           ELSE '其他時間'
         END as timeSlot,
         COUNT(*) as count
-      FROM appointments 
+      FROM customer_appointment 
       WHERE project_id = ?
       GROUP BY 
         CASE 
-          WHEN TIME(appointment_time) BETWEEN '09:00:00' AND '11:59:59' THEN '上午 (09:00-12:00)'
-          WHEN TIME(appointment_time) BETWEEN '12:00:00' AND '13:59:59' THEN '中午 (12:00-14:00)'
-          WHEN TIME(appointment_time) BETWEEN '14:00:00' AND '17:59:59' THEN '下午 (14:00-18:00)'
-          WHEN TIME(appointment_time) BETWEEN '18:00:00' AND '20:59:59' THEN '晚上 (18:00-21:00)'
+          WHEN TIME(start_time) BETWEEN '09:00:00' AND '11:59:59' THEN '上午 (09:00-12:00)'
+          WHEN TIME(start_time) BETWEEN '12:00:00' AND '13:59:59' THEN '中午 (12:00-14:00)'
+          WHEN TIME(start_time) BETWEEN '14:00:00' AND '17:59:59' THEN '下午 (14:00-18:00)'
+          WHEN TIME(start_time) BETWEEN '18:00:00' AND '20:59:59' THEN '晚上 (18:00-21:00)'
           ELSE '其他時間'
         END
-      ORDER BY MIN(TIME(appointment_time))
+      ORDER BY MIN(TIME(start_time))
     `
     
     const timeSlotStats = await executeQuery(timeSlotStatsQuery, [projectId])
@@ -129,7 +127,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // 獲取按星期分組的統計
     const weekdayStatsQuery = `
       SELECT 
-        CASE DAYOFWEEK(appointment_date)
+        CASE DAYOFWEEK(start_time)
           WHEN 1 THEN '星期日'
           WHEN 2 THEN '星期一'
           WHEN 3 THEN '星期二'
@@ -139,10 +137,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           WHEN 7 THEN '星期六'
         END as weekday,
         COUNT(*) as count
-      FROM appointments 
+      FROM customer_appointment 
       WHERE project_id = ?
       GROUP BY 
-        CASE DAYOFWEEK(appointment_date)
+        CASE DAYOFWEEK(start_time)
           WHEN 1 THEN '星期日'
           WHEN 2 THEN '星期一'
           WHEN 3 THEN '星期二'
@@ -151,7 +149,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           WHEN 6 THEN '星期五'
           WHEN 7 THEN '星期六'
         END
-      ORDER BY MIN(DAYOFWEEK(appointment_date))
+      ORDER BY MIN(DAYOFWEEK(start_time))
     `
     
     const weekdayStats = await executeQuery(weekdayStatsQuery, [projectId])
@@ -161,7 +159,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       scheduled: Number(basicStats.scheduled) || 0,
       completed: Number(basicStats.completed) || 0,
       cancelled: Number(basicStats.cancelled) || 0,
-      noShow: Number(basicStats.noShow) || 0,
       todayAppointments: Number(todayCount.count) || 0,
       upcomingAppointments: Number(upcomingCount.count) || 0,
       completionRate: basicStats.total > 0 ? 
@@ -172,19 +169,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         completed: Number(item.completed),
         cancelled: Number(item.cancelled)
       })) : [],
-      purposeStats: Array.isArray(purposeStats) ? purposeStats.map((item: any) => ({
-        purpose: item.purpose,
+      remarkStats: Array.isArray(remarkStats) ? remarkStats.map((item: any) => ({
+        remark: item.remark,
         count: Number(item.count),
         completed: Number(item.completed),
         completionRate: item.count > 0 ? 
           ((Number(item.completed) / Number(item.count)) * 100).toFixed(2) : '0.00'
       })) : [],
       salesPersonStats: Array.isArray(salesPersonStats) ? salesPersonStats.map((item: any) => ({
-        salesPerson: item.sales_person,
+        salesId: item.sales_id,
         total: Number(item.total),
         completed: Number(item.completed),
         cancelled: Number(item.cancelled),
-        noShow: Number(item.noShow),
         completionRate: item.total > 0 ? 
           ((Number(item.completed) / Number(item.total)) * 100).toFixed(2) : '0.00'
       })) : [],

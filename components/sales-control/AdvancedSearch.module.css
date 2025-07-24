@@ -1,0 +1,292 @@
+/* 高级搜索组件样式 */
+.searchCard {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8e8f0;
+}
+
+.searchHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.searchTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.searchIcon {
+  color: #6366f1;
+  font-size: 16px;
+}
+
+.activeFilters {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+  flex-wrap: wrap;
+}
+
+.filterTag {
+  font-size: 12px;
+  border-radius: 6px;
+  margin: 0;
+}
+
+.expandButton {
+  color: #6366f1;
+  border: none;
+  box-shadow: none;
+}
+
+.expandButton:hover {
+  color: #4f46e5;
+  background-color: #f0f4ff;
+}
+
+.quickSearch {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  flex: 1;
+  max-width: 400px;
+}
+
+.searchInput .ant-input {
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  transition: all 0.2s ease;
+}
+
+.searchInput .ant-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.searchButton {
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  height: 40px;
+  padding: 0 20px;
+  font-weight: 500;
+}
+
+.searchButton:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.resetButton {
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  height: 40px;
+  padding: 0 16px;
+  color: #6b7280;
+}
+
+.resetButton:hover {
+  border-color: #9ca3af;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.advancedFilters {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.filterGroup {
+  margin-bottom: 16px;
+}
+
+.filterLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.filterSelect,
+.filterInput {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.filterSelect .ant-select-selector,
+.filterInput {
+  border: 1px solid #d1d5db;
+  transition: all 0.2s ease;
+}
+
+.filterSelect .ant-select-selector:hover,
+.filterInput:hover {
+  border-color: #9ca3af;
+}
+
+.filterSelect.ant-select-focused .ant-select-selector,
+.filterInput:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.filterSlider {
+  margin-top: 8px;
+}
+
+.filterSlider .ant-slider-rail {
+  background-color: #e5e7eb;
+}
+
+.filterSlider .ant-slider-track {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+.filterSlider .ant-slider-handle {
+  border-color: #6366f1;
+}
+
+.filterSlider .ant-slider-handle:hover {
+  border-color: #4f46e5;
+}
+
+.filterSlider .ant-slider-handle:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.1);
+}
+
+.filterDatePicker {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.filterDatePicker .ant-picker {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.filterDatePicker .ant-picker:hover {
+  border-color: #9ca3af;
+}
+
+.filterDatePicker .ant-picker.ant-picker-focused {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.filterActions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: center;
+}
+
+.suggestionItem {
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+}
+
+.suggestionItem:hover {
+  background-color: #f0f4ff;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .quickSearch {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .searchInput {
+    max-width: none;
+  }
+  
+  .searchButton,
+  .resetButton {
+    width: 100%;
+  }
+  
+  .activeFilters {
+    margin-left: 0;
+    margin-top: 8px;
+  }
+  
+  .searchHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .filterActions {
+    justify-content: stretch;
+  }
+  
+  .filterActions .ant-space {
+    width: 100%;
+  }
+  
+  .filterActions .ant-btn {
+    flex: 1;
+  }
+}
+
+@media (max-width: 576px) {
+  .filterGroup {
+    margin-bottom: 12px;
+  }
+  
+  .filterLabel {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  
+  .searchCard {
+    margin-bottom: 16px;
+  }
+}
+
+/* 动画效果 */
+.advancedFilters {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filterTag {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

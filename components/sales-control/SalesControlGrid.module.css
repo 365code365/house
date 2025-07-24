@@ -1,0 +1,368 @@
+/* 销售控制网格样式 */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.unitCard {
+  font-size: 15px;
+  border: 1px solid #e8e8f0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.unitCard:hover {
+  border-color: #6366f1;
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+  transform: translateY(-2px);
+}
+
+.selectedCard {
+  border-color: #6366f1 !important;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+.selectedCard:hover {
+  transform: translateY(-2px);
+}
+
+.unitCardBody {
+  padding: 12px;
+}
+
+.cardContent {
+  position: relative;
+  height: 100%;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f1f5f9;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.unitTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.025em;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 4px;
+}
+
+.actionButton {
+  font-size: 12px;
+  padding: 0 6px;
+  height: 24px;
+}
+
+.withdrawButton {
+  font-size: 12px;
+  padding: 0 6px;
+  height: 24px;
+}
+
+.cardDetails {
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 8px 0;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.detailRowLast {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0;
+}
+
+/* 编辑对话框样式 */
+.editModal {
+    top: 20px;
+}
+
+.editFormGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.inputGroup {
+    margin-bottom: 16px;
+}
+
+.inputLabel {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+
+.detailTable {
+    border-collapse: collapse;
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    table-layout: fixed;
+    font-size: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.detailTable th,
+.detailTable td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 12px;
+    text-align: left;
+    word-wrap: break-word;
+    overflow: hidden;
+    position: relative;
+}
+
+.detailTable th {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.detailTable td {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 0;
+}
+
+.detailTable td:hover {
+    overflow: visible;
+    white-space: normal;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    z-index: 10;
+    position: relative;
+    border: 2px solid #6366f1;
+    border-radius: 4px;
+}
+
+.detailTable th {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #ffffff;
+    font-weight: 600;
+    width: 16.66%;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.detailTable td {
+    width: 16.66%;
+}
+
+.detailTable tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.detailTable tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+.detailTable tr:hover {
+    background-color: #f1f5f9;
+    transition: background-color 0.2s ease;
+}
+
+/* 客变内容和备注行的最小高度 */
+.detailTable tr:last-child {
+    min-height: 50px;
+}
+
+.detailTable tr:last-child th,
+.detailTable tr:last-child td {
+    min-height: 50px;
+    vertical-align: top;
+}
+
+/* 響應式調整 */
+@media (max-width: 1200px) {
+    .detailTable {
+        font-size: 11px;
+    }
+    
+    .detailTable th,
+    .detailTable td {
+        padding: 4px 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .detailTable {
+        font-size: 10px;
+    }
+    
+    .detailTable th,
+    .detailTable td {
+        padding: 3px 4px;
+    }
+}
+
+.detailField {
+  display: flex;
+  align-items: center;
+  min-width: 33%;
+}
+
+.fieldLabel {
+  color: #64748b;
+  min-width: 80px;
+  font-weight: 500;
+}
+
+.fieldValue {
+  font-weight: bold;
+}
+
+.fieldValuePrimary {
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.fieldValueSecondary {
+  font-weight: 600;
+  color: #10b981;
+}
+
+.fieldValueMuted {
+  color: #94a3b8;
+}
+
+.badgeText {
+  font-size: 13px;
+}
+
+/* 编辑对话框样式 */
+.editModal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editModal .ant-modal {
+  margin: 0;
+  top: 0;
+}
+
+.editModal .ant-modal-content {
+  margin: auto;
+}
+
+.editFormGrid {
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.editDialog {
+  max-height: 90vh;
+}
+
+.editDialogBody {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.buyerNameSection {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.buyerNameInput {
+  flex: 1;
+}
+
+.buyerNameInputField {
+  margin-top: 4px;
+}
+
+.withdrawButtonInDialog {
+  margin-top: 20px;
+}
+
+.formField {
+  margin-bottom: 16px;
+}
+
+.formInput {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.formTextArea {
+  margin-top: 4px;
+}
+
+/* 退户确认对话框样式 */
+.withdrawDialogContent {
+  padding: 16px 0;
+}
+
+.withdrawDialogDescription {
+  font-size: 14px;
+  margin-top: 8px;
+  display: block;
+}
+
+/* 批量操作栏样式 */
+.batchOperationBar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.batchOperationBar .ant-btn {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.batchOperationBar .ant-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.batchOperationText {
+  font-weight: 600;
+  font-size: 14px;
+}

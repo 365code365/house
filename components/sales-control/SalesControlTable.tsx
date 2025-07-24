@@ -12,50 +12,56 @@ import {
   Row,
   Col,
   Space,
-  message
+  message,
+  Checkbox,
+  Dropdown,
+  MenuProps
 } from 'antd'
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { EditOutlined, DeleteOutlined, DownOutlined } from '@ant-design/icons'
 
 const { Text, Title } = Typography
 const { Option } = Select
 const { TextArea } = Input
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useUpdateSalesControl, useBatchUpdateSalesControl, useDeleteSalesControl } from '@/hooks/useSalesControl'
 
-interface SalesControlData {
+export interface SalesControlData {
   id: number
   project_id: number
   building: string
   floor: number
   unit: string
-  unit_number: string
-  area: number
-  balcony_area: number
-  unit_price: number
-  house_price: number
-  parking_spaces: string[]
-  parking_price: number
-  total_price_with_parking: number
-  base_price: number
-  premium_rate: number
+  house_no: string
+  area: string
+  unit_price: string
+  house_total: string
+  total_with_parking: string
+  base_price: string
+  premium_rate: string
   sales_status: string
-  buyer_count: number
-  buyer_names: string
-  order_date: string
-  contract_date: string
-  sales_person_id: number
+  sales_date: string
+  deposit_date: string
+  sign_date: string
+  buyer: string
+  sales_id: string
   sales_person_name: string
-  custom_requirements: boolean
-  gifts: string
+  sales_person_employee_no: string
+  parking_ids: string
+  custom_change: number
+  custom_change_content: string | null
+  media_source: string | null
+  introducer: string | null
   notes: string
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
+  parking_spaces: any[]
 }
 
 interface SalesControlTableProps {
   data: SalesControlData[]
   visibleColumns: string[]
   onDataChange: () => void
-  projectId: string
+  projectId: number
 }
 
 
@@ -80,57 +86,145 @@ function SalesControlTable({
   onDataChange,
   projectId
 }: SalesControlTableProps) {
+  // React Query mutations
+  const updateMutation = useUpdateSalesControl(projectId)
+  const batchUpdateMutation = useBatchUpdateSalesControl(projectId)
+  const deleteMutation = useDeleteSalesControl(projectId)
   const [editingUnit, setEditingUnit] = useState<SalesControlData | null>(null)
   const [withdrawingUnitId, setWithdrawingUnitId] = useState<number | null>(null)
   const [withdrawReason, setWithdrawReason] = useState('')
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [batchEditModalOpen, setBatchEditModalOpen] = useState(false)
+  const [batchEditData, setBatchEditData] = useState<Partial<SalesControlData>>({})
 
   const allColumns = [
     { key: 'building', label: '棟別' },
     { key: 'floor', label: '樓層' },
-    { key: 'unit_number', label: '戶號' },
+    { key: 'house_no', label: '戶號' },
     { key: 'unit', label: '戶型' },
     { key: 'area', label: '面積' },
     { key: 'unit_price', label: '單價' },
-    { key: 'house_price', label: '房屋總價' },
-    { key: 'parking_price', label: '車位價格' },
-    { key: 'total_price_with_parking', label: '總價' },
+    { key: 'house_total', label: '房屋總價' },
+    { key: 'total_with_parking', label: '總價' },
     { key: 'sales_status', label: '銷售狀態' },
     { key: 'sales_person_name', label: '銷售人員' },
-    { key: 'buyer_names', label: '客戶姓名' },
-    { key: 'buyer_count', label: '買方人數' },
-    { key: 'order_date', label: '下訂日期' },
-    { key: 'contract_date', label: '簽約日期' },
-    { key: 'gifts', label: '贈送' },
+    { key: 'buyer', label: '客戶姓名' },
+    { key: 'deposit_date', label: '下訂日期' },
+    { key: 'sign_date', label: '簽約日期' },
+    { key: 'custom_change', label: '客變需求' },
+    { key: 'custom_change_content', label: '客變內容' },
+    { key: 'media_source', label: '媒體來源' },
+    { key: 'introducer', label: '介紹人' },
     { key: 'notes', label: '備註' },
     { key: 'actions', label: '操作' }
-   ]
+  ]
 
   const handleEdit = (unit: SalesControlData) => {
     setEditingUnit(unit)
   }
 
-  const handleSaveEdit = () => {
-    if (editingUnit) {
-      // TODO: 实现编辑保存逻辑
-      console.log('Saving unit:', editingUnit)
+  const handleSaveEdit = async () => {
+    if (!editingUnit) return
+    
+    try {
+      await updateMutation.mutateAsync({
+        id: editingUnit.id,
+        updates: editingUnit
+      })
+      message.success('更新成功')
       setEditingUnit(null)
       onDataChange()
+    } catch (error) {
+      message.error('更新失败')
     }
   }
 
-  const handleWithdraw = () => {
-    if (withdrawingUnitId && withdrawReason.trim()) {
-      // TODO: 实现撤销逻辑
-      console.log('Withdrawing unit:', withdrawingUnitId, 'Reason:', withdrawReason)
+  const handleWithdraw = async () => {
+    if (!withdrawingUnitId || !withdrawReason.trim()) return
+    
+    try {
+      await deleteMutation.mutateAsync(withdrawingUnitId)
+      message.success('退戶成功')
       setWithdrawingUnitId(null)
       setWithdrawReason('')
       onDataChange()
+    } catch (error) {
+      message.error('退戶失败')
     }
   }
 
+  const handleBatchEdit = () => {
+    setBatchEditModalOpen(true)
+  }
+
+  const handleBatchSave = async () => {
+    if (selectedRowKeys.length === 0) return
+    
+    try {
+      await batchUpdateMutation.mutateAsync({
+        ids: selectedRowKeys as number[],
+        updates: batchEditData
+      })
+      message.success(`批量更新 ${selectedRowKeys.length} 項成功`)
+      setBatchEditModalOpen(false)
+      setBatchEditData({})
+      setSelectedRowKeys([])
+      onDataChange()
+    } catch (error) {
+      message.error('批量更新失败')
+    }
+  }
+
+  const handleBatchStatusChange = async (status: string) => {
+    if (selectedRowKeys.length === 0) return
+    
+    try {
+      await batchUpdateMutation.mutateAsync({
+        ids: selectedRowKeys as number[],
+        updates: { sales_status: status }
+      })
+      message.success(`批量更新狀態成功`)
+      setSelectedRowKeys([])
+      onDataChange()
+    } catch (error) {
+      message.error('批量更新狀態失败')
+    }
+  }
+
+  const batchMenuItems: MenuProps['items'] = [
+    {
+      key: '1',
+      label: '批量編輯',
+      onClick: handleBatchEdit,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: '2',
+      label: '設為未售出',
+      onClick: () => handleBatchStatusChange('未售出'),
+    },
+    {
+      key: '3',
+      label: '設為訂金',
+      onClick: () => handleBatchStatusChange('訂金'),
+    },
+    {
+      key: '4',
+      label: '設為售出',
+      onClick: () => handleBatchStatusChange('售出'),
+    },
+    {
+      key: '5',
+      label: '設為不銷售',
+      onClick: () => handleBatchStatusChange('不銷售'),
+    },
+  ]
+
   const toggleColumnVisibility = (columnKey: string) => {
-    // TODO: 实现列显示切换逻辑
+    // This will be handled by parent component
     console.log('Toggle column visibility:', columnKey)
   }
 
@@ -147,8 +241,8 @@ function SalesControlTable({
     },
     {
       title: '戶號',
-      dataIndex: 'unit_number',
-      key: 'unit_number',
+      dataIndex: 'house_no',
+      key: 'house_no',
     },
     {
       title: '戶型',
@@ -159,41 +253,52 @@ function SalesControlTable({
       title: '面積',
       dataIndex: 'area',
       key: 'area',
-      render: (area: number) => `${area}坪`,
+      render: (area: string) => area ? `${area} 坪` : '-',
     },
     {
       title: '單價',
       dataIndex: 'unit_price',
       key: 'unit_price',
-      render: (price: number) => formatCurrency(price),
+      render: (price: string) => price ? formatCurrency(parseFloat(price)) : '-',
     },
     {
       title: '房屋總價',
-      dataIndex: 'house_price',
-      key: 'house_price',
-      render: (price: number) => formatCurrency(price),
+      dataIndex: 'house_total',
+      key: 'house_total',
+      render: (price: string) => price ? formatCurrency(parseFloat(price)) : '-',
     },
     {
       title: '車位價格',
-      dataIndex: 'parking_price',
+      dataIndex: 'parking_spaces',
       key: 'parking_price',
-      render: (price: number) => price ? formatCurrency(price) : '-',
+      render: (parkingSpaces: any[]) => {
+        if (parkingSpaces && parkingSpaces.length > 0) {
+          const totalPrice = parkingSpaces.reduce((sum, ps) => sum + (parseFloat(ps.price) || 0), 0)
+          return totalPrice > 0 ? formatCurrency(totalPrice) : '-'
+        }
+        return '-'
+      },
     },
     {
       title: '總價',
-      dataIndex: 'total_price_with_parking',
-      key: 'total_price_with_parking',
-      render: (price: number) => formatCurrency(price),
+      dataIndex: 'total_with_parking',
+      key: 'total_with_parking',
+      render: (price: string) => price ? formatCurrency(parseFloat(price)) : '-',
     },
     {
-      title: '銷售狀態',
+      title: '銷售狀況',
       dataIndex: 'sales_status',
       key: 'sales_status',
-      render: (status: string) => (
-        <Badge color={statusColors[status as keyof typeof statusColors]}>
-          {statusLabels[status as keyof typeof statusLabels]}
-        </Badge>
-      ),
+      render: (status: string) => {
+        const statusMap = {
+          '售出': { color: 'success', text: '售出' },
+          '訂金': { color: 'warning', text: '訂金' },
+          '未售出': { color: 'default', text: '未售出' },
+          '不銷售': { color: 'error', text: '不銷售' }
+        }
+        const statusInfo = statusMap[status as keyof typeof statusMap] || { color: 'default', text: status }
+        return <Badge color={statusInfo.color}>{statusInfo.text}</Badge>
+      },
     },
     {
       title: '銷售人員',
@@ -203,36 +308,66 @@ function SalesControlTable({
     },
     {
       title: '客戶姓名',
-      dataIndex: 'buyer_names',
+      dataIndex: 'buyer',
       key: 'buyer_names',
-      render: (customerName: string) => customerName || '-',
+      render: (buyer: string) => buyer || '-',
     },
     {
       title: '買方人數',
-      dataIndex: 'buyer_count',
+      dataIndex: 'buyer',
       key: 'buyer_count',
+      render: (buyer: string) => {
+        if (!buyer) return 0
+        return buyer.split(',').filter(name => name.trim()).length
+      },
     },
     {
       title: '下訂日期',
-      dataIndex: 'order_date',
+      dataIndex: 'deposit_date',
       key: 'order_date',
       render: (date: string) => date ? formatDate(date) : '-',
     },
     {
       title: '簽約日期',
-      dataIndex: 'contract_date',
+      dataIndex: 'sign_date',
       key: 'contract_date',
-      render: (contractDate: string) => contractDate ? formatDate(contractDate) : '-',
+      render: (date: string) => date ? formatDate(date) : '-',
     },
     {
-      title: '贈送',
-      dataIndex: 'gifts',
-      key: 'gifts',
+      title: '客變需求',
+      dataIndex: 'custom_change',
+      key: 'custom_requirements',
+      render: (customChange: number) => customChange ? '是' : '否',
+    },
+    {
+      title: '客變內容',
+      dataIndex: 'custom_change_content',
+      key: 'custom_content',
+      render: (content: string) => content || '-',
+    },
+    {
+      title: '底價',
+      dataIndex: 'base_price',
+      key: 'base_price',
+      render: (price: string) => price ? formatCurrency(parseFloat(price)) : '-',
+    },
+    {
+      title: '溢價率',
+      dataIndex: 'premium_rate',
+      key: 'premium_rate',
+      render: (rate: string) => rate ? `${rate}%` : '-',
+    },
+    {
+      title: '媒體來源',
+      dataIndex: 'media_source',
+      key: 'media_source',
+      render: (source: string) => source || '-',
     },
     {
       title: '備註',
       dataIndex: 'notes',
       key: 'notes',
+      render: (notes: string) => notes ? notes.replace(/\n/g, ' ').replace(/\r/g, ' ') : '-',
     },
     {
       title: '操作',
@@ -261,8 +396,43 @@ function SalesControlTable({
     },
   ].filter(col => visibleColumns.includes(col.key))
 
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys)
+    },
+    onSelectAll: (selected: boolean, selectedRows: SalesControlData[], changeRows: SalesControlData[]) => {
+      console.log('Select all:', selected, selectedRows, changeRows)
+    },
+  }
+
   return (
     <div>
+      {/* Batch Operations */}
+      {selectedRowKeys.length > 0 && (
+        <div style={{ 
+          marginBottom: '16px', 
+          padding: '12px', 
+          backgroundColor: '#f0f2f5', 
+          borderRadius: '6px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Text>已選擇 {selectedRowKeys.length} 項</Text>
+          <Space>
+            <Button onClick={() => setSelectedRowKeys([])}>
+              取消選擇
+            </Button>
+            <Dropdown menu={{ items: batchMenuItems }} trigger={['click']}>
+              <Button type="primary">
+                批量操作 <DownOutlined />
+              </Button>
+            </Dropdown>
+          </Space>
+        </div>
+      )}
+
       {/* Column Visibility Settings */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <Modal
@@ -287,9 +457,6 @@ function SalesControlTable({
             ))}
           </Row>
         </Modal>
-        <Button onClick={() => setColumnSettingsOpen(true)}>
-          欄位設定
-        </Button>
       </div>
 
       {/* Table */}
@@ -299,6 +466,7 @@ function SalesControlTable({
         rowKey="id"
         pagination={false}
         scroll={{ x: 'max-content' }}
+        rowSelection={rowSelection}
       />
 
       {/* Edit Dialog */}
@@ -327,9 +495,8 @@ function SalesControlTable({
               <div style={{ marginBottom: '16px' }}>
                 <Text>面積</Text>
                 <Input
-                  type="number"
                   value={editingUnit.area}
-                  onChange={(e) => setEditingUnit({ ...editingUnit, area: parseFloat(e.target.value) })}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, area: e.target.value })}
                   style={{ marginTop: '4px' }}
                 />
               </div>
@@ -338,9 +505,8 @@ function SalesControlTable({
               <div style={{ marginBottom: '16px' }}>
                 <Text>單價</Text>
                 <Input
-                  type="number"
                   value={editingUnit.unit_price}
-                  onChange={(e) => setEditingUnit({ ...editingUnit, unit_price: parseFloat(e.target.value) })}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, unit_price: e.target.value })}
                   style={{ marginTop: '4px' }}
                 />
               </div>
@@ -374,14 +540,96 @@ function SalesControlTable({
               <div style={{ marginBottom: '16px' }}>
                 <Text>客戶姓名</Text>
                 <Input
-                  value={editingUnit.buyer_names || ''}
-                  onChange={(e) => setEditingUnit({ ...editingUnit, buyer_names: e.target.value })}
+                  value={editingUnit.buyer || ''}
+                  onChange={(e) => setEditingUnit({ ...editingUnit, buyer: e.target.value })}
                   style={{ marginTop: '4px' }}
                 />
               </div>
             </Col>
           </Row>
         )}
+      </Modal>
+
+      {/* Batch Edit Dialog */}
+      <Modal
+        title={`批量編輯 (${selectedRowKeys.length} 項)`}
+        open={batchEditModalOpen}
+        onCancel={() => {
+          setBatchEditModalOpen(false)
+          setBatchEditData({})
+        }}
+        onOk={handleBatchSave}
+        okText="批量保存"
+        cancelText="取消"
+        width={800}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <Text type="secondary">僅填寫需要批量更新的欄位，空白欄位將保持原值不變</Text>
+        </div>
+        <Row gutter={16}>
+          <Col span={12}>
+            <div style={{ marginBottom: '16px' }}>
+              <Text>銷售狀況</Text>
+              <Select
+                value={batchEditData.sales_status}
+                onChange={(value) => setBatchEditData(prev => ({ ...prev, sales_status: value }))}
+                style={{ width: '100%', marginTop: '4px' }}
+                placeholder="選擇銷售狀況"
+                allowClear
+              >
+                <Option value="未售出">未售出</Option>
+                <Option value="訂金">訂金</Option>
+                <Option value="售出">售出</Option>
+                <Option value="不銷售">不銷售</Option>
+              </Select>
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ marginBottom: '16px' }}>
+              <Text>銷售人員</Text>
+              <Input
+                value={batchEditData.sales_person_name || ''}
+                onChange={(e) => setBatchEditData(prev => ({ ...prev, sales_person_name: e.target.value }))}
+                style={{ marginTop: '4px' }}
+                placeholder="輸入銷售人員姓名"
+              />
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ marginBottom: '16px' }}>
+              <Text>單價</Text>
+              <Input
+                value={batchEditData.unit_price || ''}
+                onChange={(e) => setBatchEditData(prev => ({ ...prev, unit_price: e.target.value }))}
+                style={{ marginTop: '4px' }}
+                placeholder="輸入單價"
+              />
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ marginBottom: '16px' }}>
+              <Text>媒體來源</Text>
+              <Input
+                value={batchEditData.media_source || ''}
+                onChange={(e) => setBatchEditData(prev => ({ ...prev, media_source: e.target.value }))}
+                style={{ marginTop: '4px' }}
+                placeholder="輸入媒體來源"
+              />
+            </div>
+          </Col>
+          <Col span={24}>
+            <div style={{ marginBottom: '16px' }}>
+              <Text>備註</Text>
+              <TextArea
+                value={batchEditData.notes || ''}
+                onChange={(e) => setBatchEditData(prev => ({ ...prev, notes: e.target.value }))}
+                style={{ marginTop: '4px' }}
+                placeholder="輸入備註"
+                rows={3}
+              />
+            </div>
+          </Col>
+        </Row>
       </Modal>
 
       {/* Withdraw Dialog */}

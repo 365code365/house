@@ -1,0 +1,456 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        Int     @id @default(autoincrement())
+  name      String  @db.VarChar(100)
+  accountId String  @map("account_id") @db.VarChar(50)
+  password  String  @db.VarChar(100)
+  address   String? @db.Text
+  taxId     String? @map("tax_id") @db.VarChar(20)
+  phone     String? @db.VarChar(20)
+
+  @@map("company")
+}
+
+model Project {
+  id                    Int                    @id @default(autoincrement())
+  name                  String                 @unique(map: "uk_name") @db.VarChar(100)
+  mainImage             String?                @map("main_image") @db.VarChar(255)
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at")
+  budgetPlans           BudgetPlan[]
+  commissionLists       CommissionList[]
+  customerAppointments  CustomerAppointment[]
+  depositManagements    DepositManagement[]
+  expenseManagements    ExpenseManagement[]
+  handoverManagements   HandoverManagement[]
+  parkingSpaces         ParkingSpace[]
+  purchasedCustomers    PurchasedCustomer[]
+  salesControl          SalesControl[]
+  visitorQuestionnaires VisitorQuestionnaire[]
+  withdrawalRecords     WithdrawalRecord[]
+
+  @@map("project")
+}
+
+model SalesPersonnel {
+  id                   Int                   @id @default(autoincrement())
+  employeeNo           String                @unique(map: "uk_employee_no") @map("employee_no") @db.VarChar(50)
+  name                 String                @db.VarChar(50)
+  email                String                @unique(map: "uk_email") @db.VarChar(100)
+  password             String                @db.VarChar(100)
+  phone                String?               @db.VarChar(20)
+  projectIds           String?               @map("project_ids") @db.VarChar(255)
+  remark               String?               @db.Text
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @default(now()) @updatedAt @map("updated_at")
+  commissionLists      CommissionList[]
+  customerAppointments CustomerAppointment[]
+  salesControl         SalesControl[]
+
+  @@map("sales_personnel")
+}
+
+model SalesControl {
+  id                  Int                     @id @default(autoincrement())
+  houseNo             String                  @map("house_no") @db.VarChar(50)
+  building            String                  @db.VarChar(10)
+  floor               Int
+  unit                String                  @db.VarChar(10)
+  area                Decimal?                @db.Decimal(10, 2)
+  unitPrice           Decimal?                @map("unit_price") @db.Decimal(15, 2)
+  houseTotal          Decimal?                @map("house_total") @db.Decimal(15, 2)
+  totalWithParking    Decimal?                @map("total_with_parking") @db.Decimal(15, 2)
+  salesStatus         SalesControlSalesStatus @map("sales_status")
+  salesDate           DateTime?               @map("sales_date") @db.Date
+  depositDate         DateTime?               @map("deposit_date") @db.Date
+  signDate            DateTime?               @map("sign_date") @db.Date
+  buyer               String?                 @db.VarChar(255)
+  salesId             String?                 @map("sales_id") @db.VarChar(50)
+  parkingIds          String?                 @map("parking_ids") @db.VarChar(255)
+  customChange        Boolean?                @map("custom_change")
+  customChangeContent String?                 @map("custom_change_content") @db.Text
+  mediaSource         String?                 @map("media_source") @db.VarChar(100)
+  introducer          String?                 @db.VarChar(100)
+  notes               String?                 @db.Text
+  basePrice           Decimal?                @map("base_price") @db.Decimal(15, 2)
+  premiumRate         Decimal?                @map("premium_rate") @db.Decimal(10, 2)
+  projectId           Int                     @map("project_id")
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @default(now()) @updatedAt @map("updated_at")
+  project             Project                 @relation(fields: [projectId], references: [id])
+  salesPersonnel      SalesPersonnel?         @relation(fields: [salesId], references: [employeeNo])
+
+  @@unique([projectId, houseNo])
+  @@index([projectId], map: "idx_project")
+  @@index([salesId], map: "idx_sales_person")
+  @@map("sales_control")
+}
+
+model ParkingSpace {
+  id          Int                     @id @default(autoincrement())
+  parkingNo   String                  @map("parking_no") @db.VarChar(50)
+  type        ParkingSpaceType?
+  price       Decimal                 @db.Decimal(15, 2)
+  salesStatus ParkingSpaceSalesStatus @default(AVAILABLE) @map("sales_status")
+  salesDate   DateTime?               @map("sales_date") @db.Date
+  buyer       String?                 @db.VarChar(255)
+  remark      String?                 @db.Text
+  projectId   Int                     @map("project_id")
+  createdAt   DateTime                @default(now()) @map("created_at")
+  updatedAt   DateTime                @default(now()) @updatedAt @map("updated_at")
+  location    String?                 @db.VarChar(100)
+  salesId     String?                 @map("sales_id") @db.VarChar(50)
+  project     Project                 @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, parkingNo])
+  @@index([projectId], map: "idx_project")
+  @@map("parking_space")
+}
+
+model CustomerAppointment {
+  id             Int                       @id @default(autoincrement())
+  customerName   String                    @map("customer_name") @db.VarChar(100)
+  phone          String                    @db.VarChar(20)
+  startTime      DateTime                  @map("start_time")
+  endTime        DateTime                  @map("end_time")
+  status         CustomerAppointmentStatus @default(PENDING)
+  remark         String?                   @db.Text
+  projectId      Int                       @map("project_id")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @default(now()) @updatedAt @map("updated_at")
+  salesId        String                    @map("sales_id") @db.VarChar(50)
+  project        Project                   @relation(fields: [projectId], references: [id])
+  salesPersonnel SalesPersonnel            @relation(fields: [salesId], references: [employeeNo])
+
+  @@index([salesId])
+  @@index([projectId], map: "customer_appointment_project_id_fkey")
+  @@map("customer_appointment")
+}
+
+model PurchasedCustomer {
+  id                Int             @id @default(autoincrement())
+  name              String          @db.VarChar(100)
+  houseNo           String          @map("house_no") @db.VarChar(50)
+  purchaseDate      DateTime?       @map("purchase_date") @db.Date
+  idCard            String?         @map("id_card") @db.VarChar(50)
+  isCorporate       Boolean         @default(false) @map("is_corporate")
+  email             String?         @db.VarChar(100)
+  phone             String?         @db.VarChar(20)
+  age               Int?
+  occupation        String?         @db.VarChar(100)
+  registeredAddress String?         @map("registered_address") @db.Text
+  mailingAddress    String?         @map("mailing_address") @db.Text
+  remark            String?         @db.Text
+  rating            CustomerRating?
+  projectId         Int             @map("project_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+  project           Project         @relation(fields: [projectId], references: [id])
+
+  @@index([houseNo], map: "idx_house_no")
+  @@index([projectId], map: "purchased_customer_project_id_fkey")
+  @@map("purchased_customer")
+}
+
+model VisitorQuestionnaire {
+  id                  Int               @id @default(autoincrement())
+  questionnaireDate   DateTime          @map("questionnaire_date") @db.Date
+  name                String?           @db.VarChar(100)
+  age                 Int?
+  gender              Gender?
+  landline            String?           @db.VarChar(20)
+  phone               String?           @db.VarChar(20)
+  email               String?           @db.VarChar(100)
+  occupation          String?           @db.VarChar(100)
+  receptionistId      String?           @map("receptionist_id") @db.VarChar(50)
+  visitedHouse        String?           @map("visited_house") @db.VarChar(100)
+  purchaseTimeline    PurchaseTimeline? @map("purchase_timeline")
+  demandType          DemandType?       @map("demand_type")
+  idealArea           IdealArea?        @map("ideal_area")
+  roomDemand          RoomDemand?       @map("room_demand")
+  budgetRange         String?           @map("budget_range") @db.VarChar(100)
+  considerations      String?           @db.Text
+  satisfactionFactors String?           @map("satisfaction_factors") @db.Text
+  residenceArea       String?           @map("residence_area") @db.VarChar(100)
+  purchaseMotive      PurchaseMotive?   @map("purchase_motive")
+  infoSources         String?           @map("info_sources") @db.Text
+  rating              CustomerRating?
+  projectId           Int               @map("project_id")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
+  project             Project           @relation(fields: [projectId], references: [id])
+
+  @@index([receptionistId], map: "idx_receptionist")
+  @@index([projectId], map: "visitor_questionnaire_project_id_fkey")
+  @@map("visitor_questionnaire")
+}
+
+model WithdrawalRecord {
+  id             Int                    @id @default(autoincrement())
+  customerName   String                 @map("customer_name") @db.VarChar(100)
+  building       String                 @db.VarChar(10)
+  floor          Int
+  unit           String                 @db.VarChar(10)
+  status         WithdrawalRecordStatus
+  reason         String?                @db.VarChar(100)
+  withdrawalDate DateTime               @map("withdrawal_date") @db.Date
+  housePrice     Decimal?               @map("house_price") @db.Decimal(15, 2)
+  unitPrice      Decimal?               @map("unit_price") @db.Decimal(15, 2)
+  parkingPrice   Decimal?               @map("parking_price") @db.Decimal(15, 2)
+  totalPrice     Decimal?               @map("total_price") @db.Decimal(15, 2)
+  houseNo        String?                @map("house_no") @db.VarChar(50)
+  projectId      Int                    @map("project_id")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
+  project        Project                @relation(fields: [projectId], references: [id])
+
+  @@index([projectId], map: "withdrawal_record_project_id_fkey")
+  @@map("withdrawal_record")
+}
+
+model BudgetPlan {
+  id            Int      @id @default(autoincrement())
+  category      String   @db.VarChar(100)
+  item          String?  @db.VarChar(100)
+  budget        Decimal  @db.Decimal(15, 2)
+  actualExpense Decimal  @default(0.00) @map("actual_expense") @db.Decimal(15, 2)
+  quantity      Int      @default(1)
+  unit          String?  @db.VarChar(20)
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)
+  vendor        String?  @db.VarChar(100)
+  executionRate Decimal? @map("execution_rate") @db.Decimal(10, 2)
+  remark        String?  @db.Text
+  projectId     Int      @map("project_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  project       Project  @relation(fields: [projectId], references: [id])
+
+  @@index([projectId], map: "budget_plan_project_id_fkey")
+  @@map("budget_plan")
+}
+
+model ExpenseManagement {
+  id            Int      @id @default(autoincrement())
+  expenseDate   DateTime @map("expense_date") @db.Date
+  category      String   @db.VarChar(100)
+  item          String?  @db.VarChar(100)
+  actualExpense Decimal  @default(0.00) @map("actual_expense") @db.Decimal(15, 2)
+  quantity      Int      @default(1)
+  unit          String?  @db.VarChar(20)
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)
+  vendor        String?  @db.VarChar(100)
+  invoiceNo     String?  @map("invoice_no") @db.VarChar(50)
+  remark        String?  @db.Text
+  projectId     Int      @map("project_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  project       Project  @relation(fields: [projectId], references: [id])
+
+  @@index([projectId], map: "expense_management_project_id_fkey")
+  @@index([category], map: "idx_category")
+  @@map("expense_management")
+}
+
+model CommissionList {
+  id                  Int                  @id @default(autoincrement())
+  building            String               @db.VarChar(10)
+  area                Decimal?             @db.Decimal(10, 2)
+  floor               Int
+  unit                String               @db.VarChar(10)
+  status              CommissionListStatus
+  salesDate           DateTime?            @map("sales_date") @db.Date
+  totalPrice          Decimal?             @map("total_price") @db.Decimal(15, 2)
+  totalCommissionRate Decimal              @default(0.00) @map("total_commission_rate") @db.Decimal(10, 2)
+  totalCommission     Decimal              @default(0.00) @map("total_commission") @db.Decimal(15, 2)
+  houseNo             String?              @map("house_no") @db.VarChar(50)
+  projectId           Int                  @map("project_id")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at")
+  salesId             String               @map("sales_id") @db.VarChar(50)
+  commissionDetails   CommissionDetails[]
+  project             Project              @relation(fields: [projectId], references: [id])
+  salesPersonnel      SalesPersonnel       @relation(fields: [salesId], references: [employeeNo])
+
+  @@index([salesId])
+  @@index([projectId], map: "commission_list_project_id_fkey")
+  @@map("commission_list")
+}
+
+model CommissionDetails {
+  id             Int                     @id @default(autoincrement())
+  commissionId   Int                     @map("commission_id")
+  commissionNo   Int                     @map("commission_no")
+  rate           Decimal                 @db.Decimal(10, 2)
+  status         CommissionDetailsStatus @default(NOT_COMMISSIONED)
+  amount         Decimal                 @db.Decimal(15, 2)
+  remark         String?                 @db.Text
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at")
+  commissionList CommissionList          @relation(fields: [commissionId], references: [id])
+
+  @@unique([commissionId, commissionNo], map: "uk_commission_no")
+  @@index([commissionId])
+  @@map("commission_details")
+}
+
+model DepositManagement {
+  id            Int                     @id @default(autoincrement())
+  buyer         String                  @db.VarChar(100)
+  amount        Decimal                 @db.Decimal(15, 2)
+  paymentStatus DepositManagementStatus @default(UNPAID) @map("payment_status")
+  paymentDate   DateTime?               @map("payment_date") @db.Date
+  dueDate       DateTime                @map("due_date") @db.Date
+  autoRemind    Boolean                 @default(true) @map("auto_remind")
+  remark        String?                 @db.Text
+  houseNo       String?                 @map("house_no") @db.VarChar(50)
+  projectId     Int                     @map("project_id")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @default(now()) @updatedAt @map("updated_at")
+  project       Project                 @relation(fields: [projectId], references: [id])
+
+  @@index([projectId], map: "deposit_management_project_id_fkey")
+  @@index([houseNo], map: "idx_house_no")
+  @@map("deposit_management")
+}
+
+model HandoverManagement {
+  id              Int                      @id @default(autoincrement())
+  buyer           String                   @db.VarChar(100)
+  houseNo         String                   @map("house_no") @db.VarChar(50)
+  handoverDate    DateTime?                @map("handover_date") @db.Date
+  remark          String?                  @db.Text
+  projectId       Int                      @map("project_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at")
+  completionItems String?                  @map("completion_items") @db.Text
+  defectItems     String?                  @map("defect_items") @db.Text
+  scheduledDate   DateTime?                @map("scheduled_date") @db.Date
+  status          HandoverManagementStatus @default(PENDING)
+  project         Project                  @relation(fields: [projectId], references: [id])
+
+  @@index([houseNo])
+  @@index([projectId], map: "handover_management_project_id_fkey")
+  @@map("handover_management")
+}
+
+enum SalesControlSalesStatus {
+  SOLD      @map("售出")
+  DEPOSIT   @map("訂金")
+  NOT_SALE  @map("不銷售")
+  AVAILABLE @map("未售出")
+}
+
+enum ParkingSpaceType {
+  FLAT            @map("平面")
+  MECHANICAL_TOP  @map("機械上層")
+  MECHANICAL_MID  @map("機械中層")
+  MECHANICAL_BOT  @map("機械下層")
+  MECHANICAL_MOVE @map("機械平移")
+  MOTORCYCLE      @map("機車位")
+  BICYCLE         @map("腳踏車位")
+  SELF_BUILT      @map("自設")
+  LEGAL           @map("法定")
+}
+
+enum ParkingSpaceSalesStatus {
+  SOLD      @map("售出")
+  DEPOSIT   @map("訂金")
+  NOT_SALE  @map("不銷售")
+  AVAILABLE @map("未售出")
+}
+
+enum CustomerAppointmentStatus {
+  PENDING   @map("待確認")
+  CONFIRMED @map("已確認")
+  CANCELLED @map("已取消")
+}
+
+enum CustomerRating {
+  S
+  A
+  B
+  C
+  D
+}
+
+enum Gender {
+  MALE    @map("男")
+  FEMALE  @map("女")
+  PRIVATE @map("不透露")
+}
+
+enum PurchaseTimeline {
+  HALF_YEAR @map("半年內")
+  ONE_YEAR  @map("一年內")
+  OTHER     @map("其他")
+}
+
+enum DemandType {
+  STRUCTURE @map("結構體")
+  FINISHED  @map("成屋")
+  PRESALE   @map("預售屋")
+}
+
+enum IdealArea {
+  UNDER_21   @map("21坪以下")
+  AREA_21_30 @map("21-30坪")
+  AREA_31_40 @map("31-40坪")
+  AREA_41_50 @map("41-50坪")
+  OVER_51    @map("51坪以上")
+  OTHER      @map("其他")
+}
+
+enum RoomDemand {
+  TWO_ROOM   @map("二房")
+  THREE_ROOM @map("三房")
+  FOUR_ROOM  @map("四房")
+  SHOP       @map("店面")
+  OTHER      @map("其他")
+}
+
+enum PurchaseMotive {
+  FIRST_BUY    @map("首購")
+  UPGRADE      @map("換屋")
+  INVESTMENT   @map("投資置產")
+  FOR_CHILDREN @map("為子女購屋")
+  OTHER        @map("其他")
+}
+
+enum WithdrawalRecordStatus {
+  APPLIED    @map("已申請")
+  PROCESSING @map("處理中")
+  COMPLETED  @map("已完成")
+  CANCELLED  @map("已取消")
+}
+
+enum CommissionListStatus {
+  SOLD    @map("售出")
+  DEPOSIT @map("訂金")
+}
+
+enum CommissionDetailsStatus {
+  COMMISSIONED     @map("已請傭")
+  NOT_COMMISSIONED @map("未請傭")
+}
+
+enum DepositManagementStatus {
+  PAID         @map("已結清")
+  PARTIAL_PAID @map("部分付款")
+  UNPAID       @map("未付款")
+  OVERDUE      @map("逾期")
+}
+
+enum HandoverManagementStatus {
+  PENDING     @map("待點交")
+  IN_PROGRESS @map("點交中")
+  COMPLETED   @map("已完成")
+  DELAYED     @map("延期")
+}

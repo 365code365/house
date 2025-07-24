@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/db'
+import { prisma } from '@/lib/db'
 import type { ParkingSpace } from '@/lib/db'
 
 // GET - 獲取項目的停車位數據
@@ -12,57 +12,59 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const search = searchParams.get('search')
     
     // 驗證項目是否存在
-    const projectExists = await executeQuery(
-      'SELECT id FROM projects WHERE id = ?',
-      [projectId]
-    )
+    const projectExists = await prisma.project.findUnique({
+      where: { id: parseInt(projectId) }
+    })
     
-    if (!Array.isArray(projectExists) || projectExists.length === 0) {
+    if (!projectExists) {
       return NextResponse.json({ error: '項目不存在' }, { status: 404 })
     }
     
     // 構建查詢條件
-    let whereClause = 'WHERE project_id = ?'
-    const queryParams: any[] = [projectId]
+    const whereConditions: any = {
+      projectId: parseInt(projectId)
+    }
     
     if (type) {
-      whereClause += ' AND type = ?'
-      queryParams.push(type)
+      whereConditions.type = type
     }
     
     if (status) {
-      whereClause += ' AND status = ?'
-      queryParams.push(status)
+      whereConditions.salesStatus = status
     }
     
     if (search) {
-      whereClause += ' AND (space_number LIKE ? OR location LIKE ? OR customer_name LIKE ?)'
-      const searchPattern = `%${search}%`
-      queryParams.push(searchPattern, searchPattern, searchPattern)
+      whereConditions.OR = [
+        { parkingNo: { contains: search } },
+        { location: { contains: search } },
+        { buyer: { contains: search } }
+      ]
     }
     
-    const query = `
-      SELECT 
-        id,
-        project_id as projectId,
-        space_number as spaceNumber,
-        type,
-        location,
-        price,
-        status,
-        customer_name as customerName,
-        sales_person as salesPerson,
-        contract_date as contractDate,
-        created_at as createdAt,
-        updated_at as updatedAt
-      FROM parking_spaces 
-      ${whereClause}
-      ORDER BY space_number
-    `
+    const parkingSpaces = await prisma.parkingSpace.findMany({
+      where: whereConditions,
+      orderBy: {
+        parkingNo: 'asc'
+      }
+    })
     
-    const parkingSpaces = await executeQuery(query, queryParams)
+    // 轉換為前端期望的格式
+    const formattedSpaces = parkingSpaces.map(space => ({
+      id: space.id,
+      projectId: space.projectId,
+      spaceNumber: space.parkingNo,
+      type: space.type,
+      location: space.location,
+      price: space.price,
+      status: space.salesStatus,
+      customerName: space.buyer,
+      salesPerson: space.salesId,
+      contractDate: space.salesDate,
+      createdAt: space.createdAt,
+      updatedAt: space.updatedAt
+    }))
     
-    return NextResponse.json(parkingSpaces)
+    return NextResponse.json(formattedSpaces)
   } catch (error) {
     console.error('獲取停車位數據失敗:', error)
     return NextResponse.json({ error: '獲取停車位數據失敗' }, { status: 500 })
@@ -91,61 +93,56 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
     
     // 驗證項目是否存在
-    const projectExists = await executeQuery(
-      'SELECT id FROM projects WHERE id = ?',
-      [projectId]
-    )
+    const projectExists = await prisma.project.findUnique({
+      where: { id: parseInt(projectId) }
+    })
     
-    if (!Array.isArray(projectExists) || projectExists.length === 0) {
+    if (!projectExists) {
       return NextResponse.json({ error: '項目不存在' }, { status: 404 })
     }
     
     // 檢查車位編號是否已存在
-    const existingSpace = await executeQuery(
-      'SELECT id FROM parking_spaces WHERE project_id = ? AND space_number = ?',
-      [projectId, spaceNumber]
-    )
+    const existingSpace = await prisma.parkingSpace.findFirst({
+      where: {
+        projectId: parseInt(projectId),
+        parkingNo: spaceNumber
+      }
+    })
     
-    if (Array.isArray(existingSpace) && existingSpace.length > 0) {
+    if (existingSpace) {
       return NextResponse.json({ error: '該車位編號已存在' }, { status: 400 })
     }
     
     // 創建停車位記錄
-    const result = await executeQuery(
-      `INSERT INTO parking_spaces (
-        project_id, space_number, type, location, price, 
-        status, customer_name, sales_person, contract_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        projectId, spaceNumber, type, location, price,
-        status, customerName || null, salesPerson || null, contractDate || null
-      ]
-    )
+    const newRecord = await prisma.parkingSpace.create({
+      data: {
+        projectId: parseInt(projectId),
+        parkingNo: spaceNumber,
+        type: type as any,
+        location: location,
+        price: parseFloat(price),
+        salesStatus: status as any || 'AVAILABLE',
+        buyer: customerName || null,
+        salesId: salesPerson || null,
+        salesDate: contractDate ? new Date(contractDate) : null
+      }
+    })
     
-    if (result && typeof result === 'object' && 'insertId' in result) {
-      // 獲取創建的記錄
-      const newRecord = await executeQuery(
-        `SELECT 
-          id,
-          project_id as projectId,
-          space_number as spaceNumber,
-          type,
-          location,
-          price,
-          status,
-          customer_name as customerName,
-          sales_person as salesPerson,
-          contract_date as contractDate,
-          created_at as createdAt,
-          updated_at as updatedAt
-        FROM parking_spaces WHERE id = ?`,
-        [result.insertId]
-      )
-      
-      return NextResponse.json(Array.isArray(newRecord) ? newRecord[0] : newRecord, { status: 201 })
-    }
-    
-    return NextResponse.json({ error: '創建停車位失敗' }, { status: 500 })
+    // 返回創建的記錄，轉換為前端期望的格式
+    return NextResponse.json({
+      id: newRecord.id,
+      projectId: newRecord.projectId,
+      spaceNumber: newRecord.parkingNo,
+      type: newRecord.type,
+      location: newRecord.location,
+      price: newRecord.price,
+      status: newRecord.salesStatus,
+      customerName: newRecord.buyer,
+      salesPerson: newRecord.salesId,
+      contractDate: newRecord.salesDate,
+      createdAt: newRecord.createdAt,
+      updatedAt: newRecord.updatedAt
+    }, { status: 201 })
   } catch (error) {
     console.error('創建停車位失敗:', error)
     return NextResponse.json({ error: '創建停車位失敗' }, { status: 500 })

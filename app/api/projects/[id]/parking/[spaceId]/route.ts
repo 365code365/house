@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/db'
+import { prisma } from '@/lib/db'
 
 // PUT - 更新停車位
 export async function PUT(
@@ -21,50 +21,43 @@ export async function PUT(
     } = body
     
     // 檢查停車位是否存在且屬於該項目
-    const existingSpace = await executeQuery(
-      'SELECT id, space_number FROM parking_spaces WHERE id = ? AND project_id = ?',
-      [spaceId, projectId]
-    )
+    const existingSpace = await prisma.parkingSpace.findFirst({
+      where: {
+        id: parseInt(spaceId),
+        projectId: parseInt(projectId)
+      }
+    })
     
-    if (!Array.isArray(existingSpace) || existingSpace.length === 0) {
+    if (!existingSpace) {
       return NextResponse.json({ error: '停車位不存在' }, { status: 404 })
     }
     
     // 檢查車位編號是否重複（排除當前記錄）
-    const duplicateSpace = await executeQuery(
-      'SELECT id FROM parking_spaces WHERE project_id = ? AND space_number = ? AND id != ?',
-      [projectId, spaceNumber, spaceId]
-    )
+    const duplicateSpace = await prisma.parkingSpace.findFirst({
+      where: {
+        projectId: parseInt(projectId),
+        parkingNo: spaceNumber,
+        id: { not: parseInt(spaceId) }
+      }
+    })
       
-    if (Array.isArray(duplicateSpace) && duplicateSpace.length > 0) {
+    if (duplicateSpace) {
       return NextResponse.json({ error: '該車位編號已存在' }, { status: 400 })
     }
     
-    await executeQuery(
-      `UPDATE parking_spaces SET 
-        space_number = ?,
-        space_type = ?,
-        location = ?,
-        price = ?,
-        status = ?,
-        customer_name = ?,
-        sales_person = ?,
-        contract_date = ?,
-        updated_at = NOW()
-      WHERE id = ? AND project_id = ?`,
-      [
-        spaceNumber,
-        spaceType,
-        location,
-        price,
-        status,
-        customerName || null,
-        salesPerson || null,
-        contractDate || null,
-        spaceId,
-        projectId
-      ]
-    )
+    await prisma.parkingSpace.update({
+      where: { id: parseInt(spaceId) },
+      data: {
+        parkingNo: spaceNumber,
+        type: spaceType as any,
+        location: location,
+        price: parseFloat(price),
+        salesStatus: status as any,
+        buyer: customerName || null,
+        salesId: salesPerson || null,
+        salesDate: contractDate ? new Date(contractDate) : null
+      }
+    })
     
     return NextResponse.json({ message: '停車位已更新' })
   } catch (error) {
@@ -82,28 +75,27 @@ export async function DELETE(
     const { id: projectId, spaceId } = params
     
     // 檢查停車位是否存在且屬於該項目
-    const existingSpace = await executeQuery(
-      'SELECT id, status FROM parking_spaces WHERE id = ? AND project_id = ?',
-      [spaceId, projectId]
-    )
+    const existingSpace = await prisma.parkingSpace.findFirst({
+      where: {
+        id: parseInt(spaceId),
+        projectId: parseInt(projectId)
+      }
+    })
     
-    if (!Array.isArray(existingSpace) || existingSpace.length === 0) {
+    if (!existingSpace) {
       return NextResponse.json({ error: '停車位不存在' }, { status: 404 })
     }
     
-    const space = existingSpace[0] as any
-    
     // 檢查是否可以刪除（已售出的停車位可能需要特殊處理）
-    if (space.status === 'sold') {
+    if (existingSpace.salesStatus === 'SOLD') {
       return NextResponse.json({ 
         error: '已售出的停車位不能直接刪除，請先處理相關合約' 
       }, { status: 400 })
     }
     
-    await executeQuery(
-      'DELETE FROM parking_spaces WHERE id = ? AND project_id = ?',
-      [spaceId, projectId]
-    )
+    await prisma.parkingSpace.delete({
+      where: { id: parseInt(spaceId) }
+    })
     
     return NextResponse.json({ message: '停車位已刪除' })
   } catch (error) {
@@ -120,29 +112,31 @@ export async function GET(
   try {
     const { id: projectId, spaceId } = params
     
-    const parkingSpace = await executeQuery(
-      `SELECT 
-        id,
-        space_number,
-        space_type,
-        location,
-        price,
-        status,
-        customer_name,
-        sales_person,
-        contract_date,
-        created_at,
-        updated_at
-      FROM parking_spaces 
-      WHERE id = ? AND project_id = ?`,
-      [spaceId, projectId]
-    )
+    const parkingSpace = await prisma.parkingSpace.findFirst({
+      where: {
+        id: parseInt(spaceId),
+        projectId: parseInt(projectId)
+      }
+    })
     
-    if (!Array.isArray(parkingSpace) || parkingSpace.length === 0) {
+    if (!parkingSpace) {
       return NextResponse.json({ error: '停車位不存在' }, { status: 404 })
     }
     
-    return NextResponse.json(parkingSpace[0])
+    // 轉換為前端期望的格式
+    return NextResponse.json({
+      id: parkingSpace.id,
+      space_number: parkingSpace.parkingNo,
+      space_type: parkingSpace.type,
+      location: parkingSpace.location,
+      price: parkingSpace.price,
+      status: parkingSpace.salesStatus,
+      customer_name: parkingSpace.buyer,
+      sales_person: parkingSpace.salesId,
+      contract_date: parkingSpace.salesDate,
+      created_at: parkingSpace.createdAt,
+      updated_at: parkingSpace.updatedAt
+    })
   } catch (error) {
     console.error('獲取停車位詳情失敗:', error)
     return NextResponse.json({ error: '獲取停車位詳情失敗' }, { status: 500 })

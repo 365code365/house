@@ -1,3 +1,14 @@
+CREATE TABLE `company`
+(
+    `id`         INT AUTO_INCREMENT PRIMARY KEY,
+    `name`       VARCHAR(100) NOT NULL COMMENT '公司名稱',
+    `account_id` VARCHAR(50)  NOT NULL COMMENT '帳號',
+    `password`   VARCHAR(100) NOT NULL COMMENT '密碼',
+    `address`    TEXT COMMENT '地址',
+    `tax_id`     VARCHAR(20) COMMENT '統一編號',
+    `phone`      VARCHAR(20) COMMENT '連絡電話'
+);
+
 CREATE TABLE `project` (
   `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '建案ID',
   `name` VARCHAR(100) NOT NULL COMMENT '建案名稱',
@@ -39,23 +50,23 @@ CREATE TABLE `sales_control` (
   `deposit_date` DATE COMMENT '下訂日期',
   `sign_date` DATE COMMENT '簽約日期',
   `buyer` VARCHAR(255) COMMENT '買方姓名（逗號分隔多買方）',
-  `sales_person_id` INT COMMENT '銷售人員ID（關聯sales_personnel.id）',
+  `sales_id` VARCHAR(50) COMMENT '銷售人員編號（關聯sales_personnel.employee_no）',
   `parking_ids` VARCHAR(255) COMMENT '車位編號（逗號分隔多車位，關聯parking_space.id）',
   `custom_change` TINYINT(1) COMMENT '客變需求（1=是，0=否）',
   `custom_change_content` TEXT COMMENT '客變內容',
   `media_source` VARCHAR(100) COMMENT '媒體來源',
   `introducer` VARCHAR(100) COMMENT '介紹人',
-  `remark` TEXT COMMENT '備註',
+  `notes` TEXT COMMENT '備註',
   `base_price` DECIMAL(15,2) COMMENT '底價（萬元）',
   `premium_rate` DECIMAL(10,2) COMMENT '溢價率（%）',
   `project_id` INT NOT NULL COMMENT '所屬建案ID（關聯project.id）',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `uk_house_no` (`house_no`),
-  KEY `idx_sales_person` (`sales_person_id`),
+  KEY `idx_sales_id` (`sales_id`),
   KEY `idx_project` (`project_id`),
   CONSTRAINT `fk_sales_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
-  CONSTRAINT `fk_sales_person` FOREIGN KEY (`sales_person_id`) REFERENCES `sales_personnel` (`id`)
+
 ) ENGINE=InnoDB COMMENT '房源銷控表，記錄各戶型的銷售狀態、價格、買方等核心資訊';
 
 CREATE TABLE `parking_space` (
@@ -66,7 +77,7 @@ CREATE TABLE `parking_space` (
   `sales_status` ENUM('售出','訂金','未售出') DEFAULT '未售出' COMMENT '銷售狀態',
   `sales_date` DATE COMMENT '銷售日期（關聯簽約日期）',
   `buyer` VARCHAR(255) COMMENT '買方姓名',
-  `sales_person_id` INT COMMENT '銷售人員ID（關聯sales_personnel.id）',
+  `sales_id` VARCHAR(50) COMMENT '銷售人員編號（關聯sales_personnel.employee_no）',
   `remark` TEXT COMMENT '備註',
   `project_id` INT NOT NULL COMMENT '所屬建案ID（關聯project.id）',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -74,7 +85,7 @@ CREATE TABLE `parking_space` (
   UNIQUE KEY `uk_parking_no` (`parking_no`),
   KEY `idx_project` (`project_id`),
   CONSTRAINT `fk_parking_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
-  CONSTRAINT `fk_parking_sales` FOREIGN KEY (`sales_person_id`) REFERENCES `sales_personnel` (`id`)
+
 ) ENGINE=InnoDB COMMENT '停車位資訊表，管理車位編號、類型、價格及銷售狀態';
 
 
@@ -84,15 +95,15 @@ CREATE TABLE `customer_appointment` (
   `phone` VARCHAR(20) NOT NULL COMMENT '客戶電話（格式：09xxxxxxxxx）',
   `start_time` DATETIME NOT NULL COMMENT '開始時間',
   `end_time` DATETIME NOT NULL COMMENT '結束時間（需≤開始時間+3小時）',
-  `sales_person_id` INT NOT NULL COMMENT '接待人員ID（關聯sales_personnel.id）',
+  `sales_id` VARCHAR(50) NOT NULL COMMENT '接待人員編號（關聯sales_personnel.employee_no）',
   `status` ENUM('待確認','已確認','已取消') DEFAULT '待確認' COMMENT '預約狀態',
   `remark` TEXT COMMENT '備註',
   `project_id` INT NOT NULL COMMENT '所屬建案ID（關聯project.id）',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY `idx_sales_person` (`sales_person_id`),
+  KEY `idx_sales_id` (`sales_id`),
   KEY `idx_time` (`start_time`,`end_time`),
-  CONSTRAINT `fk_appointment_sales` FOREIGN KEY (`sales_person_id`) REFERENCES `sales_personnel` (`id`),
+
   CONSTRAINT `fk_appointment_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
 ) ENGINE=InnoDB COMMENT '客戶預約表，記錄客戶看房預約的時間、接待人員及狀態';
 
@@ -129,7 +140,7 @@ CREATE TABLE `visitor_questionnaire` (
   `phone` VARCHAR(20) COMMENT '手機',
   `email` VARCHAR(100) COMMENT '電子郵箱',
   `occupation` VARCHAR(100) COMMENT '職業',
-  `receptionist_id` INT COMMENT '接待人員ID（關聯sales_personnel.id）',
+  `receptionist_id` VARCHAR(50) COMMENT '接待人員編號（關聯sales_personnel.employee_no）',
   `visited_house` VARCHAR(50) COMMENT '參觀戶別（房型編號）',
   `purchase_timeline` ENUM('半年內','一年內','其他') COMMENT '購屋時程',
   `demand_type` ENUM('結構體','成屋','預售屋') COMMENT '需求類型',
@@ -146,7 +157,7 @@ CREATE TABLE `visitor_questionnaire` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `idx_receptionist` (`receptionist_id`),
-  CONSTRAINT `fk_questionnaire_sales` FOREIGN KEY (`receptionist_id`) REFERENCES `sales_personnel` (`id`),
+
   CONSTRAINT `fk_questionnaire_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
 ) ENGINE=InnoDB COMMENT '訪客問卷表，記錄訪客的基本資訊、購屋需求及意見';
 
@@ -217,7 +228,7 @@ CREATE TABLE `commission_list` (
   `floor` INT NOT NULL COMMENT '樓層',
   `unit` VARCHAR(10) NOT NULL COMMENT '戶別',
   `status` ENUM('售出','訂金') NOT NULL COMMENT '房源狀態',
-  `sales_person_id` INT NOT NULL COMMENT '銷售員ID',
+  `sales_id` VARCHAR(50) NOT NULL COMMENT '銷售員編號',
   `sales_date` DATE COMMENT '銷售日期（簽約日期）',
   `total_price` DECIMAL(15,2) COMMENT '房屋總價（萬元）',
   `total_with_parking` DECIMAL(15,2) NOT NULL COMMENT '含車位總價（萬元）',
@@ -227,8 +238,8 @@ CREATE TABLE `commission_list` (
   `project_id` INT NOT NULL COMMENT '所屬建案ID',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY `idx_sales_person` (`sales_person_id`),
-  CONSTRAINT `fk_commission_sales` FOREIGN KEY (`sales_person_id`) REFERENCES `sales_personnel` (`id`),
+  KEY `idx_sales_id` (`sales_id`),
+
   CONSTRAINT `fk_commission_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
 ) ENGINE=InnoDB COMMENT '請佣列表主表，管理各戶型的請佣基本資訊';
 
