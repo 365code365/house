@@ -77,13 +77,13 @@ function generateMockSalesControlData() {
           deposit_date: hasBuyer ? `2024-12-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}` : null,
           sign_date: hasBuyer && salesStatus === '售出' ? `2024-12-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}` : null,
           buyer: hasBuyer ? buyers[Math.floor(Math.random() * buyers.length)] : null,
-          sales_id: `SP${String(Math.floor(Math.random() * 4) + 1).padStart(3, '0')}`, // 隨機分配銷售人員編號
+          sales_id: `SP${String(Math.floor(Math.random() * 4) + 1).padStart(3, '0')}`,
           parking_ids: `B1-${Math.floor(Math.random() * 100) + 1}`,
           custom_change: Math.random() > 0.7 ? 1 : 0,
           custom_change_content: Math.random() > 0.7 ? '客變廚房格局' : null,
           media_source: mediaSources[Math.floor(Math.random() * mediaSources.length)],
           introducer: Math.random() > 0.5 ? introducers[Math.floor(Math.random() * introducers.length)] : null,
-          notes: Math.random() > 0.8 ? '客戶要求特殊付款方式' : null,
+          remark: Math.random() > 0.8 ? '客戶要求特殊付款方式' : null,
           base_price: basePrice,
           premium_rate: Math.round(premiumRate * 100) / 100,
           project_id: 1 // 假設項目ID為1
@@ -143,8 +143,8 @@ async function seedMockData() {
       INSERT INTO sales_control (
         house_no, building, floor, unit, area, unit_price, house_total, 
         total_with_parking, sales_status, sales_date, deposit_date, sign_date, 
-        buyer, sales_id, parking_ids, custom_change, custom_change_content, 
-        media_source, introducer, notes, base_price, premium_rate, project_id
+        buyer, sales_person_id, parking_ids, custom_change, custom_change_content, 
+        media_source, introducer, remark, base_price, premium_rate, project_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     
     for (const data of mockData) {
@@ -152,9 +152,9 @@ async function seedMockData() {
         data.house_no, data.building, data.floor, data.unit, data.area,
         data.unit_price, data.house_total, data.total_with_parking, data.sales_status,
         data.sales_date, data.deposit_date, data.sign_date, data.buyer,
-        data.sales_id, data.parking_ids, data.custom_change,
+        data.sales_person_id, data.parking_ids, data.custom_change,
         data.custom_change_content, data.media_source, data.introducer,
-        data.notes, data.base_price, data.premium_rate, data.project_id
+        data.remark, data.base_price, data.premium_rate, data.project_id
       ]);
     }
     

@@ -118,6 +118,8 @@ Thumbs.db
 
 # Database
 *.db
+*.sqlite
+*.sqlite3
 
 # Uploads
 public/uploads/
