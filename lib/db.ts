@@ -5,8 +5,18 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Prisma Client 配置選項
+const prismaOptions = {
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] as const : ['error'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+}
+
 // 創建 Prisma Client 實例
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+export const prisma = globalForPrisma.prisma ?? new PrismaClient(prismaOptions)
 
 // 在開發環境中避免重複創建實例
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma

@@ -1,6 +1,8 @@
 # TODO:
 
-- [x] 1: 檢查scripts目錄中的數據生成腳本內容 (priority: High)
-- [x] 2: 運行insert-sales-personnel.js腳本生成銷售人員數據 (priority: High)
-- [x] 3: 運行seed-mock-data.js腳本生成模擬銷控數據 (priority: High)
-- [x] 4: 驗證數據庫中是否成功生成測試數據 (priority: Medium)
+- [x] 1: 創建.env.example環境變量模板文件 (priority: High)
+- [x] 2: 創建.env.local開發環境配置文件 (priority: High)
+- [x] 3: 配置數據庫連接和API密鑰等環境變量 (priority: High)
+- [x] 4: 更新next.config.js支持環境變量配置 (priority: Medium)
+- [x] 5: 添加環境配置說明到README.md (priority: Medium)
+- [x] 6: 確保生產環境配置的安全性設置 (priority: Medium)

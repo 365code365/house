@@ -110,17 +110,83 @@ npm install
 ```
 
 3. **环境配置**
-创建 `.env.local` 文件并配置以下环境变量：
+
+#### 环境变量设置
+项目使用环境变量来管理不同环境的配置。请按照以下步骤设置：
+
+**步骤 1：复制环境变量模板**
+```bash
+cp .env.example .env.local
+```
+
+**步骤 2：配置开发环境变量**
+编辑 `.env.local` 文件，配置以下关键变量：
+
 ```env
-# 数据库连接
-DATABASE_URL="mysql://username:password@localhost:3306/sales_management"
+# 应用配置
+NODE_ENV=development
+NEXT_PUBLIC_APP_NAME=房地產銷控管理系統
+NEXT_PUBLIC_APP_VERSION=1.0.0
 
-# NextAuth 配置
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key"
+# 数据库配置
+DATABASE_URL="mysql://root:password@localhost:3306/real_estate_dev"
 
-# 其他配置
-NODE_ENV="development"
+# JWT 密钥
+JWT_SECRET=dev_jwt_secret_key_2024
+JWT_EXPIRES_IN=7d
+
+# API 配置
+API_BASE_URL=http://localhost:3000/api
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+
+# 文件上传配置
+UPLOAD_MAX_SIZE=10485760
+UPLOAD_ALLOWED_TYPES=image/jpeg,image/png,image/gif,application/pdf
+
+# 安全配置
+CORS_ORIGIN=http://localhost:3000
+CSRF_SECRET=dev_csrf_secret_key
+
+# 日志配置
+LOG_LEVEL=debug
+LOG_FILE_PATH=./logs/dev.log
+```
+
+#### 环境变量说明
+
+| 变量名 | 说明 | 必需 | 默认值 |
+|--------|------|------|--------|
+| `NODE_ENV` | 运行环境 | 是 | development |
+| `DATABASE_URL` | 数据库连接字符串 | 是 | - |
+| `JWT_SECRET` | JWT 签名密钥 | 是 | - |
+| `NEXT_PUBLIC_APP_NAME` | 应用名称 | 否 | 房地產銷控管理系統 |
+| `API_BASE_URL` | API 基础地址 | 否 | http://localhost:3000/api |
+| `UPLOAD_MAX_SIZE` | 文件上传大小限制 | 否 | 10485760 |
+| `CORS_ORIGIN` | CORS 允许的源 | 否 | http://localhost:3000 |
+| `LOG_LEVEL` | 日志级别 | 否 | info |
+
+#### 不同环境配置
+
+**开发环境 (.env.local)**
+- 使用本地数据库
+- 启用详细日志
+- 允许所有 CORS 源
+
+**生产环境 (.env.production)**
+```env
+NODE_ENV=production
+DATABASE_URL="mysql://user:pass@prod-server:3306/sales_prod"
+JWT_SECRET="your-production-jwt-secret"
+API_BASE_URL=https://yourdomain.com/api
+CORS_ORIGIN=https://yourdomain.com
+LOG_LEVEL=error
+```
+
+**测试环境 (.env.test)**
+```env
+NODE_ENV=test
+DATABASE_URL="mysql://user:pass@test-server:3306/sales_test"
+JWT_SECRET="test-jwt-secret"
 ```
 
 4. **数据库设置**
