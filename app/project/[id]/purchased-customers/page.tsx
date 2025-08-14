@@ -40,48 +40,39 @@ export interface PurchasedCustomerItem {
     id: number
     projectId: number
     customerName: string
-    contactPhone: string
-    email?: string
-    contractNumber: string
     houseNo: string
-    houseType: string
-    purchaseDate: Date | string
-    totalAmount: number
-    paidAmount: number
-    remainingAmount: number
-    paymentStatus: 'PENDING' | 'PARTIAL' | 'COMPLETED'
-    loanStatus: 'NOT_APPLIED' | 'APPLIED' | 'APPROVED' | 'REJECTED'
-    contractStatus: 'PENDING' | 'SIGNED' | 'CANCELLED'
-    handoverStatus: 'PENDING' | 'SCHEDULED' | 'COMPLETED'
-    handoverDate?: Date | string | null
-    salesPersonId?: number
-    salesPerson?: string
-    rating: 'A' | 'B' | 'C' | 'D'
-    remark?: string
-    mailingAddress?: string
+    purchaseDate: Date | string | null
+    idCard: string | null
+    isCorporate: boolean
+    email: string | null
+    phone: string | null
+    age: number | null
+    occupation: string | null
+    registeredAddress: string | null
+    mailingAddress: string | null
+    remark: string | null
+    rating: 'S' | 'A' | 'B' | 'C' | 'D' | null
+    salesPersonId: string | null
+    salesPerson: string | null
     createdAt: Date | string
     updatedAt: Date | string
-    lastContactDate?: Date | string | null
-    nextFollowUpDate?: Date | string | null
 }
 
 interface CustomerFormData {
     customerName: string
-    contactPhone: string
-    email: string
     houseNo: string
-    houseType: string
-    purchaseDate: dayjs.Dayjs
-    totalAmount: number
-    paidAmount: number
-    paymentStatus: 'COMPLETED' | 'PARTIAL' | 'PENDING'
-    contractStatus: 'SIGNED' | 'PENDING' | 'CANCELLED'
-    handoverStatus: 'COMPLETED' | 'SCHEDULED' | 'PENDING'
-    handoverDate: dayjs.Dayjs | null
-    salesPerson: string
+    purchaseDate: dayjs.Dayjs | null
+    idCard: string
+    isCorporate: boolean
+    email: string
+    phone: string
+    age: number | null
+    occupation: string
+    registeredAddress: string
+    mailingAddress: string
     remark: string
-    lastContactDate: dayjs.Dayjs | null
-    nextFollowUpDate: dayjs.Dayjs | null
+    rating: 'S' | 'A' | 'B' | 'C' | 'D'
+    salesPersonId: string
 }
 
 export default function PurchasedCustomersPage() {
@@ -89,6 +80,7 @@ export default function PurchasedCustomersPage() {
     const params = useParams()
     const projectId = params.id as string
     const [purchasedCustomers, setPurchasedCustomers] = useState<PurchasedCustomerItem[]>([])
+    const [salesPersonnel, setSalesPersonnel] = useState<any[]>([]) // 添加销售人员列表状态
     const [pagination, setPagination] = useState({
         page: 1,
         pageSize: 10,
@@ -98,107 +90,96 @@ export default function PurchasedCustomersPage() {
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     const [searchTerm, setSearchTerm] = useState('')
-    const [filterPaymentStatus, setFilterPaymentStatus] = useState('')
-    const [filterLoanStatus, setFilterLoanStatus] = useState('')
-    const [filterRating, setFilterRating] = useState('')
-    const [loading, setLoading] = useState(false)
-    const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
-        customerName: true,
-        contactPhone: true,
-        houseNo: true,
-        houseType: true,
-        purchaseDate: true,
-        totalAmount: true,
-        paymentProgress: true,
-        paymentStatus: true,
-        contractStatus: true,
-        handoverStatus: true,
-        salesPerson: true,
-        contractNumber: false,
-        loanStatus: false,
-        rating: false,
-        mailingAddress: false,
-        lastContactDate: false,
-        nextFollowUpDate: false,
-    })
     const [isModalVisible, setIsModalVisible] = useState(false)
-    const [isDetailDrawerVisible, setIsDetailDrawerVisible] = useState(false)
     const [editingItem, setEditingItem] = useState<PurchasedCustomerItem | null>(null)
     const [viewingItem, setViewingItem] = useState<PurchasedCustomerItem | null>(null)
+    const [isDetailDrawerVisible, setIsDetailDrawerVisible] = useState(false)
+    const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
+        customerName: true,
+        houseNo: true,
+        purchaseDate: true,
+        phone: true,
+        email: true,
+        isCorporate: true,
+        rating: true,
+        salesPerson: true
+    })
     const [form] = Form.useForm()
 
-    // API 數據獲取
+    // 獲取已購客戶列表
     const fetchPurchasedCustomers = async () => {
         try {
-            setLoading(true)
-            const queryParams = new URLSearchParams({
-                page: currentPage.toString(),
-                pageSize: pageSize.toString(),
-                ...(searchTerm && {searchTerm}),
-                ...(filterPaymentStatus && {paymentStatus: filterPaymentStatus}),
-                ...(filterLoanStatus && {loanStatus: filterLoanStatus}),
-                ...(filterRating && {rating: filterRating})
-            })
-
-            const response = await fetch(`/api/projects/${projectId}/purchased-customers?${queryParams}`)
-            if (!response.ok) {
-                throw new Error('獲取已購客戶數據失敗')
+            const response = await fetch(`/api/projects/${projectId}/purchased-customers?page=${currentPage}&pageSize=${pageSize}&search=${searchTerm}`)
+            if (response.ok) {
+                const data = await response.json()
+                setPurchasedCustomers(data.data || [])
+                setPagination({
+                    page: data.pagination?.page || 1,
+                    pageSize: data.pagination?.limit || 10,
+                    total: data.pagination?.total || 0,
+                    totalPages: data.pagination?.totalPages || 0
+                })
             }
-
-            const data = await response.json()
-            setPurchasedCustomers(data.data || [])
-            setPagination(data.pagination || {page: 1, pageSize: 10, total: 0, totalPages: 0})
         } catch (error) {
-            console.error('獲取已購客戶數據失敗:', error)
-            message.error('獲取已購客戶數據失敗')
-        } finally {
-            setLoading(false)
+            console.error('獲取已購客戶列表失敗:', error)
+            message.error('獲取數據失敗')
         }
     }
 
-    const houseTypes = [
-        '1房1廳1衛',
-        '2房1廳1衛',
-        '2房2廳1衛',
-        '3房2廳2衛',
-        '4房2廳3衛',
-        '其他'
-    ]
-
-    const salesPersons = [
-        '張業務',
-        '陳業務',
-        '林業務',
-        '王業務',
-        '劉業務',
-        '黃業務'
-    ]
+    // 獲取銷售人員列表
+    const fetchSalesPersonnel = async () => {
+        try {
+            const response = await fetch(`/api/projects/${projectId}/sales-personnel`)
+            if (response.ok) {
+                const data = await response.json()
+                console.log('獲取到的銷售人員列表:', data) // 添加调试日志
+                setSalesPersonnel(data || [])
+            }
+        } catch (error) {
+            console.error('獲取銷售人員列表失敗:', error)
+        }
+    }
 
     useEffect(() => {
         fetchPurchasedCustomers()
-    }, [projectId, currentPage, pageSize, searchTerm, filterPaymentStatus, filterLoanStatus, filterRating])
+        fetchSalesPersonnel() // 添加获取销售人员列表
+    }, [currentPage, pageSize, searchTerm, projectId])
 
     const handleAdd = () => {
         setEditingItem(null)
         form.resetFields()
         // 设置默认值
         form.setFieldsValue({
-            paymentStatus: 'PENDING',
-            contractStatus: 'PENDING',
-            handoverStatus: 'PENDING'
+            rating: 'C',
+            isCorporate: false
         })
         setIsModalVisible(true)
     }
 
     const handleEdit = (item: PurchasedCustomerItem) => {
+        console.log('編輯客戶數據:', item) // 添加调试日志
+        console.log('銷售人員ID:', item.salesPersonId) // 添加调试日志
+        
         setEditingItem(item)
-        form.setFieldsValue({
-            ...item,
+        const formValues = {
+            customerName: item.customerName,
+            houseNo: item.houseNo,
             purchaseDate: item.purchaseDate ? dayjs(item.purchaseDate) : null,
-            handoverDate: item.handoverDate ? dayjs(item.handoverDate) : null,
-            lastContactDate: item.lastContactDate ? dayjs(item.lastContactDate) : null,
-            nextFollowUpDate: item.nextFollowUpDate ? dayjs(item.nextFollowUpDate) : null
-        })
+            idCard: item.idCard || '',
+            isCorporate: item.isCorporate || false,
+            email: item.email || '',
+            phone: item.phone || '',
+            age: item.age || null,
+            occupation: item.occupation || '',
+            registeredAddress: item.registeredAddress || '',
+            mailingAddress: item.mailingAddress || '',
+            remark: item.remark || '',
+            rating: item.rating || 'C',
+            salesPersonId: item.salesPersonId || ''
+        }
+        
+        console.log('設置表單值:', formValues) // 添加调试日志
+        form.setFieldsValue(formValues)
         setIsModalVisible(true)
     }
 
@@ -211,37 +192,53 @@ export default function PurchasedCustomersPage() {
 
     const handleDelete = async (id: number) => {
         try {
-            // 这里应该调用API删除数据
-            setPurchasedCustomers(prev => prev.filter(item => item.id !== id))
-            message.success('刪除成功')
+            const response = await fetch(`/api/projects/${projectId}/purchased-customers/${id}`, {
+                method: 'DELETE'
+            })
+            
+            if (response.ok) {
+                message.success('刪除成功')
+                fetchPurchasedCustomers()
+            } else {
+                const error = await response.json()
+                message.error(error.error || '刪除失敗')
+            }
         } catch (error) {
+            console.error('刪除失敗:', error)
             message.error('刪除失敗')
         }
     }
 
-    const handleSubmit = async (values: any) => {
+    const handleImport = (data: any[]) => {
+        // 處理導入邏輯
+        console.log('導入數據:', data)
+        message.success(`成功導入 ${data.length} 條記錄`)
+        fetchPurchasedCustomers()
+    }
+
+    const handleExport = () => {
+        // 處理導出邏輯
+        console.log('導出數據')
+        message.success('導出成功')
+    }
+
+    const handleSubmit = async (values: CustomerFormData) => {
         try {
             const customerData = {
-                name: values.customerName,
-                contactPhone: values.contactPhone,
-                email: values.email,
-                contractNo: values.contractNumber,
+                customerName: values.customerName,
                 houseNo: values.houseNo,
-                houseType: values.houseType,
                 purchaseDate: values.purchaseDate ? values.purchaseDate.toISOString() : null,
-                totalPrice: values.totalAmount,
-                paidAmount: values.paidAmount,
-                paymentStatus: values.paymentStatus,
-                loanStatus: values.loanStatus,
-                contractStatus: values.contractStatus,
-                handoverStatus: values.handoverStatus,
-                handoverDate: values.handoverDate ? values.handoverDate.toISOString() : null,
-                salesPersonId: values.salesPersonId,
+                idCard: values.idCard || null,
+                isCorporate: values.isCorporate,
+                email: values.email || null,
+                phone: values.phone || null,
+                age: values.age || null,
+                occupation: values.occupation || null,
+                registeredAddress: values.registeredAddress || null,
+                mailingAddress: values.mailingAddress || null,
+                remark: values.remark || null,
                 rating: values.rating,
-                remark: values.remark,
-                mailingAddress: values.mailingAddress,
-                lastContactDate: values.lastContactDate ? values.lastContactDate.toISOString() : null,
-                nextFollowUpDate: values.nextFollowUpDate ? values.nextFollowUpDate.toISOString() : null
+                salesPersonId: values.salesPersonId || null
             }
 
             if (editingItem) {
@@ -282,83 +279,7 @@ export default function PurchasedCustomersPage() {
         }
     }
 
-    const getPaymentStatusColor = (status: string) => {
-        switch (status) {
-            case 'COMPLETED':
-                return 'green'
-            case 'PARTIAL':
-                return 'orange'
-            case 'PENDING':
-                return 'red'
-            default:
-                return 'default'
-        }
-    }
 
-    const getPaymentStatusText = (status: string) => {
-        switch (status) {
-            case 'COMPLETED':
-                return '已完成'
-            case 'PARTIAL':
-                return '部分付款'
-            case 'PENDING':
-                return '待付款'
-            default:
-                return status
-        }
-    }
-
-    const getContractStatusColor = (status: string) => {
-        switch (status) {
-            case 'SIGNED':
-                return 'green'
-            case 'PENDING':
-                return 'orange'
-            case 'CANCELLED':
-                return 'red'
-            default:
-                return 'default'
-        }
-    }
-
-    const getContractStatusText = (status: string) => {
-        switch (status) {
-            case 'SIGNED':
-                return '已簽約'
-            case 'PENDING':
-                return '待簽約'
-            case 'CANCELLED':
-                return '已取消'
-            default:
-                return status
-        }
-    }
-
-    const getHandoverStatusColor = (status: string) => {
-        switch (status) {
-            case 'COMPLETED':
-                return 'green'
-            case 'SCHEDULED':
-                return 'blue'
-            case 'PENDING':
-                return 'orange'
-            default:
-                return 'default'
-        }
-    }
-
-    const getHandoverStatusText = (status: string) => {
-        switch (status) {
-            case 'COMPLETED':
-                return '已交屋'
-            case 'SCHEDULED':
-                return '已安排'
-            case 'PENDING':
-                return '待安排'
-            default:
-                return status
-        }
-    }
 
     const allColumns = useMemo(() => [
         {
@@ -369,149 +290,48 @@ export default function PurchasedCustomersPage() {
             fixed: 'left' as const,
         },
         {
-            title: '聯絡電話',
-            dataIndex: 'contactPhone',
-            key: 'contactPhone',
-            width: 130,
-        },
-        {
             title: '房號',
             dataIndex: 'houseNo',
             key: 'houseNo',
             width: 100,
         },
         {
-            title: '房型',
-            dataIndex: 'houseType',
-            key: 'houseType',
-            width: 120,
-        },
-        {
             title: '購買日期',
             dataIndex: 'purchaseDate',
             key: 'purchaseDate',
             width: 120,
-            sorter: (a: PurchasedCustomerItem, b: PurchasedCustomerItem) =>
-                new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime(),
-            render: (date: string | Date) => {
+            sorter: (a: PurchasedCustomerItem, b: PurchasedCustomerItem) => {
+                if (!a.purchaseDate || !b.purchaseDate) return 0
+                return new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime()
+            },
+            render: (date: string | Date | null) => {
                 if (!date) return '-'
                 return dayjs(date).format('YYYY/MM/DD')
             },
         },
         {
-            title: '總金額',
-            dataIndex: 'totalAmount',
-            key: 'totalAmount',
-            width: 120,
-            render: (amount: number) => formatCurrency(amount),
-            sorter: (a: PurchasedCustomerItem, b: PurchasedCustomerItem) => a.totalAmount - b.totalAmount,
+            title: '聯絡電話',
+            dataIndex: 'phone',
+            key: 'phone',
+            width: 130,
         },
         {
-            title: '付款進度',
-            key: 'paymentProgress',
+            title: '電子郵件',
+            dataIndex: 'email',
+            key: 'email',
             width: 150,
-            render: (record: PurchasedCustomerItem) => {
-                const percent = Math.round((record.paidAmount / record.totalAmount) * 100)
-                return (
-                    <Progress
-                        percent={percent}
-                        size="small"
-                        status={percent === 100 ? 'success' : 'active'}
-                        format={() => `${percent}%`}
-                    />
-                )
-            },
+            ellipsis: true,
         },
         {
-            title: '付款狀態',
-            dataIndex: 'paymentStatus',
-            key: 'paymentStatus',
+            title: '客戶類型',
+            dataIndex: 'isCorporate',
+            key: 'isCorporate',
             width: 100,
-            render: (status: string) => (
-                <Tag color={getPaymentStatusColor(status)}>
-                    {getPaymentStatusText(status)}
+            render: (isCorporate: boolean) => (
+                <Tag color={isCorporate ? 'blue' : 'green'}>
+                    {isCorporate ? '企業客戶' : '個人客戶'}
                 </Tag>
             ),
-            filters: [
-                {text: '已完成', value: 'COMPLETED'},
-                {text: '部分付款', value: 'PARTIAL'},
-                {text: '待付款', value: 'PENDING'},
-            ],
-            onFilter: (value: any, record: PurchasedCustomerItem) => record.paymentStatus === value,
-        },
-        {
-            title: '合約狀態',
-            dataIndex: 'contractStatus',
-            key: 'contractStatus',
-            width: 100,
-            render: (status: string) => (
-                <Tag color={getContractStatusColor(status)}>
-                    {getContractStatusText(status)}
-                </Tag>
-            ),
-            filters: [
-                {text: '已簽約', value: 'SIGNED'},
-                {text: '待簽約', value: 'PENDING'},
-                {text: '已取消', value: 'CANCELLED'},
-            ],
-            onFilter: (value: any, record: PurchasedCustomerItem) => record.contractStatus === value,
-        },
-        {
-            title: '交屋狀態',
-            dataIndex: 'handoverStatus',
-            key: 'handoverStatus',
-            width: 100,
-            render: (status: string) => (
-                <Tag color={getHandoverStatusColor(status)}>
-                    {getHandoverStatusText(status)}
-                </Tag>
-            ),
-            filters: [
-                {text: '已交屋', value: 'COMPLETED'},
-                {text: '已安排', value: 'SCHEDULED'},
-                {text: '待安排', value: 'PENDING'},
-            ],
-            onFilter: (value: any, record: PurchasedCustomerItem) => record.handoverStatus === value,
-        },
-        {
-            title: '負責業務',
-            dataIndex: 'salesPerson',
-            key: 'salesPerson',
-            width: 100,
-        },
-        {
-            title: '合約編號',
-            dataIndex: 'contractNumber',
-            key: 'contractNumber',
-            width: 120,
-        },
-        {
-            title: '貸款狀態',
-            dataIndex: 'loanStatus',
-            key: 'loanStatus',
-            width: 100,
-            render: (status: string) => {
-                const colorMap: Record<string, string> = {
-                    'NOT_APPLIED': 'default',
-                    'APPLIED': 'processing',
-                    'APPROVED': 'success',
-                    'REJECTED': 'error',
-                }
-                const textMap: Record<string, string> = {
-                    'NOT_APPLIED': '未申請',
-                    'APPLIED': '已申請',
-                    'APPROVED': '已核准',
-                    'REJECTED': '已拒絕',
-                }
-                return <Tag color={colorMap[status] || 'default'}>{textMap[status] || status || '-'}</Tag>
-            },
-            filters: [
-                {text: '未申請', value: 'NOT_APPLIED'},
-                {text: '已申請', value: 'APPLIED'},
-                {text: '已核准', value: 'APPROVED'},
-                {text: '已拒絕', value: 'REJECTED'},
-            ],
-            onFilter: (value: any, record: PurchasedCustomerItem) => record.loanStatus === value,
         },
         {
             title: '客戶評級',
@@ -520,6 +340,7 @@ export default function PurchasedCustomersPage() {
             width: 80,
             render: (rating: string) => {
                 const colorMap: Record<string, string> = {
+                    'S': 'purple',
                     'A': 'gold',
                     'B': 'green',
                     'C': 'blue',
@@ -528,6 +349,7 @@ export default function PurchasedCustomersPage() {
                 return <Tag color={colorMap[rating] || 'default'}>{rating || '-'}</Tag>
             },
             filters: [
+                {text: 'S級', value: 'S'},
                 {text: 'A級', value: 'A'},
                 {text: 'B級', value: 'B'},
                 {text: 'C級', value: 'C'},
@@ -536,31 +358,10 @@ export default function PurchasedCustomersPage() {
             onFilter: (value: any, record: PurchasedCustomerItem) => record.rating === value,
         },
         {
-            title: '郵寄地址',
-            dataIndex: 'mailingAddress',
-            key: 'mailingAddress',
-            width: 200,
-            ellipsis: true,
-        },
-        {
-            title: '最後聯絡日期',
-            dataIndex: 'lastContactDate',
-            key: 'lastContactDate',
-            width: 120,
-            render: (date: string | Date) => {
-                if (!date) return '-'
-                return dayjs(date).format('YYYY/MM/DD')
-            },
-        },
-        {
-            title: '下次跟進日期',
-            dataIndex: 'nextFollowUpDate',
-            key: 'nextFollowUpDate',
-            width: 120,
-            render: (date: string | Date) => {
-                if (!date) return '-'
-                return dayjs(date).format('YYYY/MM/DD')
-            },
+            title: '負責業務',
+            dataIndex: 'salesPerson',
+            key: 'salesPerson',
+            width: 100,
         },
         {
             title: '操作',
@@ -577,7 +378,7 @@ export default function PurchasedCustomersPage() {
                             setIsDetailDrawerVisible(true)
                         }}
                     >
-                        詳情
+                        查看
                     </Button>
                     <Button
                         type="link"
@@ -587,22 +388,19 @@ export default function PurchasedCustomersPage() {
                         編輯
                     </Button>
                     <Popconfirm
-                        title="確定要刪除這筆記錄嗎？"
+                        title="確定要刪除這個客戶嗎？"
                         onConfirm={() => handleDelete(record.id)}
                         okText="確定"
                         cancelText="取消"
                     >
-                        <Button type="link" danger icon={<DeleteOutlined/>}>
+                        <Button
+                            type="link"
+                            danger
+                            icon={<DeleteOutlined/>}
+                        >
                             刪除
                         </Button>
                     </Popconfirm>
-                    <Button
-                        type="link"
-                        icon={<PhoneOutlined/>}
-                        onClick={() => window.open(`tel:${record.contactPhone}`)}
-                    >
-                        撥號
-                    </Button>
                 </Space>
             ),
         },
@@ -640,59 +438,14 @@ export default function PurchasedCustomersPage() {
 
             {/* 搜索和篩選區域 */}
             <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex items-center space-x-4 mb-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">搜索</label>
                         <Input
-                            placeholder="搜索客戶姓名、電話、房號..."
+                            placeholder="搜索客戶姓名、房號、電話..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             allowClear
                         />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">付款狀態</label>
-                        <Select
-                            placeholder="選擇付款狀態"
-                            value={filterPaymentStatus}
-                            onChange={setFilterPaymentStatus}
-                            allowClear
-                            className="w-full"
-                        >
-                            <Option value="PENDING">待付款</Option>
-                            <Option value="PARTIAL">部分付款</Option>
-                            <Option value="COMPLETED">已付清</Option>
-                        </Select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">貸款狀態</label>
-                        <Select
-                            placeholder="選擇貸款狀態"
-                            value={filterLoanStatus}
-                            onChange={setFilterLoanStatus}
-                            allowClear
-                            className="w-full"
-                        >
-                            <Option value="NOT_APPLIED">未申請</Option>
-                            <Option value="APPLIED">已申請</Option>
-                            <Option value="APPROVED">已核准</Option>
-                            <Option value="REJECTED">已拒絕</Option>
-                        </Select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">客戶評級</label>
-                        <Select
-                            placeholder="選擇客戶評級"
-                            value={filterRating}
-                            onChange={setFilterRating}
-                            allowClear
-                            className="w-full"
-                        >
-                            <Option value="A">A級</Option>
-                            <Option value="B">B級</Option>
-                            <Option value="C">C級</Option>
-                            <Option value="D">D級</Option>
-                        </Select>
                     </div>
                 </div>
             </div>
@@ -702,7 +455,7 @@ export default function PurchasedCustomersPage() {
                     columns={columns}
                     dataSource={purchasedCustomers}
                     rowKey="id"
-                    scroll={{x: 1500, y: 600}}
+                    scroll={{x: 1200, y: 600}}
                     pagination={{
                         current: currentPage,
                         pageSize: pageSize,
@@ -732,15 +485,20 @@ export default function PurchasedCustomersPage() {
                     form.resetFields()
                 }}
                 footer={null}
-                width={800}
+                width={700}
             >
                 <Form
                     form={form}
                     layout="vertical"
                     onFinish={handleSubmit}
-                    className="space-y-4"
+                    initialValues={{
+                        rating: 'C',
+                        isCorporate: false
+                    }}
+                    size="small"
                 >
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* 基本信息 - 第一行 */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <Form.Item
                             name="customerName"
                             label="客戶姓名"
@@ -750,116 +508,66 @@ export default function PurchasedCustomersPage() {
                         </Form.Item>
 
                         <Form.Item
-                            name="contactPhone"
-                            label="聯絡電話"
-                            rules={[{required: true, message: '請輸入聯絡電話'}]}
-                        >
-                            <Input placeholder="請輸入聯絡電話"/>
-                        </Form.Item>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
-                            name="email"
-                            label="電子郵件"
-                            rules={[{type: 'email', message: '請輸入有效的電子郵件'}]}
-                        >
-                            <Input placeholder="請輸入電子郵件"/>
-                        </Form.Item>
-
-                        <Form.Item
-                            name="contractNumber"
-                            label="合約編號"
-                            rules={[{required: true, message: '請輸入合約編號'}]}
-                        >
-                            <Input placeholder="請輸入合約編號"/>
-                        </Form.Item>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
                             name="houseNo"
-                            label="房屋編號"
-                            rules={[{required: true, message: '請輸入房屋編號'}]}
+                            label="房號"
+                            rules={[{required: true, message: '請輸入房號'}]}
                         >
-                            <Input placeholder="請輸入房屋編號"/>
-                        </Form.Item>
-
-                        <Form.Item
-                            name="houseType"
-                            label="房屋類型"
-                            rules={[{required: true, message: '請選擇房屋類型'}]}
-                        >
-                            <Select placeholder="請選擇房屋類型">
-                                {houseTypes.map(type => (
-                                    <Option key={type} value={type}>{type}</Option>
-                                ))}
-                            </Select>
+                            <Input placeholder="請輸入房號"/>
                         </Form.Item>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* 基本信息 - 第二行 */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <Form.Item
                             name="purchaseDate"
                             label="購買日期"
-                            rules={[{required: true, message: '請選擇購買日期'}]}
                         >
                             <DatePicker className="w-full"/>
                         </Form.Item>
 
                         <Form.Item
-                            name="totalAmount"
-                            label="總金額"
-                            rules={[{required: true, message: '請輸入總金額'}]}
+                            name="idCard"
+                            label="身份證號"
                         >
-                            <InputNumber
-                                className="w-full"
-                                placeholder="請輸入總金額"
-                                formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                parser={value => value!.replace(/\$\s?|(,*)/g, '')}
-                            />
+                            <Input placeholder="請輸入身份證號"/>
                         </Form.Item>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* 联系信息 - 第三行 */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <Form.Item
-                            name="paidAmount"
-                            label="已付金額"
-                            rules={[{required: true, message: '請輸入已付金額'}]}
+                            name="phone"
+                            label="聯絡電話"
                         >
-                            <InputNumber
-                                className="w-full"
-                                placeholder="請輸入已付金額"
-                                formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                parser={value => value!.replace(/\$\s?|(,*)/g, '')}
-                            />
+                            <Input placeholder="請輸入聯絡電話"/>
                         </Form.Item>
 
                         <Form.Item
-                            name="paymentStatus"
-                            label="付款狀態"
-                            rules={[{required: true, message: '請選擇付款狀態'}]}
+                            name="email"
+                            label="電子郵件"
                         >
-                            <Select placeholder="請選擇付款狀態">
-                                <Option value="PENDING">待付款</Option>
-                                <Option value="PARTIAL">部分付款</Option>
-                                <Option value="COMPLETED">已付清</Option>
-                            </Select>
+                            <Input placeholder="請輸入電子郵件"/>
                         </Form.Item>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* 客户信息 - 第四行 */}
+                    <div className="grid grid-cols-3 gap-3 mb-3">
                         <Form.Item
-                            name="loanStatus"
-                            label="貸款狀態"
-                            rules={[{required: true, message: '請選擇貸款狀態'}]}
+                            name="isCorporate"
+                            label="客戶類型"
+                            valuePropName="checked"
                         >
-                            <Select placeholder="請選擇貸款狀態">
-                                <Option value="NOT_APPLIED">未申請</Option>
-                                <Option value="APPLIED">已申請</Option>
-                                <Option value="APPROVED">已核准</Option>
-                                <Option value="REJECTED">已拒絕</Option>
+                            <Select placeholder="請選擇客戶類型">
+                                <Option value={false}>個人客戶</Option>
+                                <Option value={true}>企業客戶</Option>
                             </Select>
+                        </Form.Item>
+
+                        <Form.Item
+                            name="age"
+                            label="年齡"
+                        >
+                            <InputNumber className="w-full" placeholder="年齡" min={0} max={150}/>
                         </Form.Item>
 
                         <Form.Item
@@ -868,6 +576,7 @@ export default function PurchasedCustomersPage() {
                             rules={[{required: true, message: '請選擇客戶評級'}]}
                         >
                             <Select placeholder="請選擇客戶評級">
+                                <Option value="S">S級</Option>
                                 <Option value="A">A級</Option>
                                 <Option value="B">B級</Option>
                                 <Option value="C">C級</Option>
@@ -876,79 +585,65 @@ export default function PurchasedCustomersPage() {
                         </Form.Item>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* 职业信息 - 第五行 */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <Form.Item
-                            name="contractStatus"
-                            label="合約狀態"
-                            rules={[{required: true, message: '請選擇合約狀態'}]}
+                            name="occupation"
+                            label="職業"
                         >
-                            <Select placeholder="請選擇合約狀態">
-                                <Option value="PENDING">待簽約</Option>
-                                <Option value="SIGNED">已簽約</Option>
-                                <Option value="CANCELLED">已取消</Option>
-                            </Select>
+                            <Input placeholder="請輸入職業"/>
                         </Form.Item>
 
                         <Form.Item
-                            name="handoverStatus"
-                            label="交房狀態"
-                            rules={[{required: true, message: '請選擇交房狀態'}]}
+                            name="salesPersonId"
+                            label="銷售人員"
                         >
-                            <Select placeholder="請選擇交房狀態">
-                                <Option value="PENDING">未交房</Option>
-                                <Option value="SCHEDULED">已排程</Option>
-                                <Option value="COMPLETED">已交房</Option>
+                            <Select
+                                placeholder="請選擇銷售人員"
+                                className="w-full"
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                    (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                                }
+                            >
+                                {salesPersonnel.map(person => (
+                                    <Option key={person.employee_no} value={person.employee_no}>
+                                        {person.name} ({person.employee_no})
+                                    </Option>
+                                ))}
                             </Select>
                         </Form.Item>
                     </div>
 
-                    <Form.Item
-                        name="handoverDate"
-                        label="交房日期"
-                    >
-                        <DatePicker className="w-full"/>
-                    </Form.Item>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* 地址信息 - 第六行 */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <Form.Item
-                            name="salesPersonId"
-                            label="銷售人員ID"
+                            name="registeredAddress"
+                            label="戶籍地址"
                         >
-                            <InputNumber className="w-full" placeholder="請輸入銷售人員ID"/>
+                            <TextArea rows={2} placeholder="請輸入戶籍地址"/>
                         </Form.Item>
 
                         <Form.Item
                             name="mailingAddress"
-                            label="郵寄地址"
+                            label="通訊地址"
                         >
-                            <Input placeholder="請輸入郵寄地址"/>
+                            <TextArea rows={2} placeholder="請輸入通訊地址"/>
                         </Form.Item>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
-                            name="lastContactDate"
-                            label="最後聯絡日期"
-                        >
-                            <DatePicker className="w-full"/>
-                        </Form.Item>
-
-                        <Form.Item
-                            name="nextFollowUpDate"
-                            label="下次跟進日期"
-                        >
-                            <DatePicker className="w-full"/>
-                        </Form.Item>
-                    </div>
-
+                    {/* 备注信息 - 第七行 */}
                     <Form.Item
                         name="remark"
                         label="備註"
+                        className="mb-3"
                     >
-                        <TextArea rows={3} placeholder="請輸入備註"/>
+                        <TextArea rows={2} placeholder="請輸入備註"/>
                     </Form.Item>
 
-                    <div className="flex justify-end space-x-2 pt-4">
+                    {/* 操作按钮 */}
+                    <div className="flex justify-end space-x-2 pt-2 border-t">
                         <Button onClick={() => {
                             setIsModalVisible(false)
                             setEditingItem(null)
@@ -978,19 +673,13 @@ export default function PurchasedCustomersPage() {
                                     <strong>客戶姓名：</strong>{viewingItem.customerName}
                                 </div>
                                 <div>
-                                    <strong>聯絡電話：</strong>{viewingItem.contactPhone}
+                                    <strong>聯絡電話：</strong>{viewingItem.phone || '未設定'}
                                 </div>
                                 <div>
-                                    <strong>電子郵件：</strong>{viewingItem.email}
-                                </div>
-                                <div>
-                                    <strong>合約編號：</strong>{viewingItem.contractNumber}
+                                    <strong>電子郵件：</strong>{viewingItem.email || '未設定'}
                                 </div>
                                 <div>
                                     <strong>房號：</strong>{viewingItem.houseNo}
-                                </div>
-                                <div>
-                                    <strong>房型：</strong>{viewingItem.houseType}
                                 </div>
                                 <div>
                                     <strong>購買日期：</strong>{viewingItem.purchaseDate ? new Date(viewingItem.purchaseDate).toLocaleDateString() : '未設定'}
@@ -998,145 +687,54 @@ export default function PurchasedCustomersPage() {
                                 <div>
                                     <strong>客戶評級：</strong>
                                     <Tag color={
+                                        viewingItem.rating === 'S' ? 'purple' :
                                         viewingItem.rating === 'A' ? 'green' :
-                                            viewingItem.rating === 'B' ? 'blue' :
-                                                viewingItem.rating === 'C' ? 'orange' : 'red'
+                                        viewingItem.rating === 'B' ? 'blue' :
+                                        viewingItem.rating === 'C' ? 'orange' : 'red'
                                     } style={{marginLeft: 8}}>
                                         {viewingItem.rating}級
                                     </Tag>
                                 </div>
+                                <div>
+                                    <strong>身份證號：</strong>{viewingItem.idCard || '未設定'}
+                                </div>
+                                <div>
+                                    <strong>是否企業客戶：</strong>{viewingItem.isCorporate ? '是' : '否'}
+                                </div>
+                                <div>
+                                    <strong>年齡：</strong>{viewingItem.age || '未設定'}
+                                </div>
+                                <div>
+                                    <strong>職業：</strong>{viewingItem.occupation || '未設定'}
+                                </div>
+                                <div>
+                                    <strong>負責業務：</strong>{viewingItem.salesPerson || '未設定'}
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card title="地址資訊" style={{marginBottom: 16}}>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '16px'}}>
+                                {viewingItem.registeredAddress && (
+                                    <div>
+                                        <strong>戶籍地址：</strong>{viewingItem.registeredAddress}
+                                    </div>
+                                )}
                                 {viewingItem.mailingAddress && (
                                     <div>
-                                        <strong>郵寄地址：</strong>{viewingItem.mailingAddress}
+                                        <strong>通訊地址：</strong>{viewingItem.mailingAddress}
                                     </div>
                                 )}
                             </div>
                         </Card>
 
-                        <Card title="付款資訊" style={{marginBottom: 16}}>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                        {viewingItem.remark && (
+                            <Card title="備註資訊" style={{marginBottom: 16}}>
                                 <div>
-                                    <strong>總金額：</strong>{formatCurrency(viewingItem.totalAmount)}
+                                    <strong>備註：</strong>{viewingItem.remark}
                                 </div>
-                                <div>
-                                    <strong>已付金額：</strong>{formatCurrency(viewingItem.paidAmount)}
-                                </div>
-                                <div>
-                                    <strong>剩餘金額：</strong>{formatCurrency(viewingItem.remainingAmount)}
-                                </div>
-                                <div>
-                                    <strong>付款狀態：</strong>
-                                    <Tag color={getPaymentStatusColor(viewingItem.paymentStatus)}
-                                         style={{marginLeft: 8}}>
-                                        {getPaymentStatusText(viewingItem.paymentStatus)}
-                                    </Tag>
-                                </div>
-                                <div>
-                                    <strong>貸款狀態：</strong>
-                                    <Tag color={
-                                        viewingItem.loanStatus === 'APPROVED' ? 'green' :
-                                            viewingItem.loanStatus === 'APPLIED' ? 'blue' :
-                                                viewingItem.loanStatus === 'REJECTED' ? 'red' : 'default'
-                                    } style={{marginLeft: 8}}>
-                                        {viewingItem.loanStatus === 'APPROVED' ? '已核准' :
-                                            viewingItem.loanStatus === 'APPLIED' ? '已申請' :
-                                                viewingItem.loanStatus === 'REJECTED' ? '已拒絕' : '未申請'}
-                                    </Tag>
-                                </div>
-                            </div>
-                            <div style={{marginTop: 16}}>
-                                <strong>付款進度：</strong>
-                                <Progress
-                                    percent={Math.round((viewingItem.paidAmount / viewingItem.totalAmount) * 100)}
-                                    status={viewingItem.paidAmount === viewingItem.totalAmount ? 'success' : 'active'}
-                                    style={{marginTop: 8}}
-                                />
-                            </div>
-                        </Card>
-
-                        <Card title="狀態資訊" style={{marginBottom: 16}}>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
-                                <div>
-                                    <strong>合約狀態：</strong>
-                                    <Tag color={getContractStatusColor(viewingItem.contractStatus)}
-                                         style={{marginLeft: 8}}>
-                                        {getContractStatusText(viewingItem.contractStatus)}
-                                    </Tag>
-                                </div>
-                                <div>
-                                    <strong>交屋狀態：</strong>
-                                    <Tag color={getHandoverStatusColor(viewingItem.handoverStatus)}
-                                         style={{marginLeft: 8}}>
-                                        {getHandoverStatusText(viewingItem.handoverStatus)}
-                                    </Tag>
-                                </div>
-                                <div>
-                                    <strong>交屋日期：</strong>{viewingItem.handoverDate ? new Date(viewingItem.handoverDate).toLocaleDateString() : '未安排'}
-                                </div>
-                                {viewingItem.salesPersonId && (
-                                    <div>
-                                        <strong>銷售人員ID：</strong>{viewingItem.salesPersonId}
-                                    </div>
-                                )}
-                                <div>
-                                    <strong>負責業務：</strong>{viewingItem.salesPerson}
-                                </div>
-                            </div>
-                        </Card>
-
-                        <Card title="追蹤記錄">
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
-                                <div>
-                                    <strong>建立時間：</strong>{viewingItem.createdAt ? new Date(viewingItem.createdAt).toLocaleDateString() : '未知'}
-                                </div>
-                                <div>
-                                    <strong>最後聯絡：</strong>{viewingItem.lastContactDate ? new Date(viewingItem.lastContactDate).toLocaleDateString() : '無記錄'}
-                                </div>
-                                <div>
-                                    <strong>下次追蹤：</strong>{viewingItem.nextFollowUpDate ? new Date(viewingItem.nextFollowUpDate).toLocaleDateString() : '未安排'}
-                                </div>
-                            </div>
-                            {viewingItem.remark && (
-                                <div style={{marginTop: 16}}>
-                                    <strong>備註：</strong>
-                                    <div style={{
-                                        marginTop: 8,
-                                        padding: 12,
-                                        backgroundColor: '#f5f5f5',
-                                        borderRadius: 4
-                                    }}>
-                                        {viewingItem.remark}
-                                    </div>
-                                </div>
-                            )}
-                        </Card>
-
-                        <div style={{marginTop: 24, textAlign: 'center'}}>
-                            <Space>
-                                <Button
-                                    type="primary"
-                                    icon={<PhoneOutlined/>}
-                                    onClick={() => window.open(`tel:${viewingItem.contactPhone}`)}
-                                >
-                                    撥打電話
-                                </Button>
-                                <Button
-                                    icon={<MessageOutlined/>}
-                                    onClick={() => window.open(`sms:${viewingItem.contactPhone}`)}
-                                >
-                                    發送簡訊
-                                </Button>
-                                <Button
-                                    icon={<EditOutlined/>}
-                                    onClick={() => {
-                                        setIsDetailDrawerVisible(false)
-                                        handleEdit(viewingItem)
-                                    }}
-                                >
-                                    編輯資料
-                                </Button>
-                            </Space>
-                        </div>
+                            </Card>
+                        )}
                     </div>
                 )}
             </Drawer>

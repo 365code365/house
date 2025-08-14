@@ -2,22 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { PurchasedCustomer } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
-import { parsePaginationParams, validateRequiredParams } from '@/lib/api-response'
 
 // GET - 獲取項目的已購客戶數據
 export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get('searchTerm')
-    const paymentStatus = searchParams.get('paymentStatus')
-    const loanStatus = searchParams.get('loanStatus')
-    const rating = searchParams.get('rating')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
-    const minPrice = searchParams.get('minPrice')
-    const maxPrice = searchParams.get('maxPrice')
-    
-    // 分頁參數
+    const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
     const pageSize = parseInt(searchParams.get('pageSize') || '10')
     const skip = (page - 1) * pageSize
@@ -36,37 +26,12 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       projectId: projectId
     }
     
-    if (paymentStatus) {
-      whereConditions.paymentStatus = paymentStatus
-    }
-    
-    if (loanStatus) {
-      whereConditions.loanStatus = loanStatus
-    }
-    
-    if (rating) {
-      whereConditions.rating = rating
-    }
-    
-    // 價格範圍篩選
-    if (minPrice || maxPrice) {
-      whereConditions.totalPrice = {}
-      if (minPrice) whereConditions.totalPrice.gte = parseFloat(minPrice)
-      if (maxPrice) whereConditions.totalPrice.lte = parseFloat(maxPrice)
-    }
-    
-    // 日期範圍篩選
-    if (startDate || endDate) {
-      whereConditions.purchaseDate = {}
-      if (startDate) whereConditions.purchaseDate.gte = new Date(startDate)
-      if (endDate) whereConditions.purchaseDate.lte = new Date(endDate)
-    }
-    
     if (search) {
       whereConditions.OR = [
         { name: { contains: search } },
         { houseNo: { contains: search } },
-        { contractNo: { contains: search } }
+        { phone: { contains: search } },
+        { email: { contains: search } }
       ]
     }
     
@@ -86,23 +51,48 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       take: pageSize
     })
     
-    // 轉換數據格式
+    // 獲取銷售人員信息（如果需要的話）
+    const salesPersonIds = purchasedCustomers
+      .map(customer => customer.salesId)
+      .filter((id): id is string => id !== null && id !== undefined)
+    
+    let salesPersonnelMap: Record<string, any> = {}
+    if (salesPersonIds.length > 0) {
+      const salesPersonnel = await prisma.salesPersonnel.findMany({
+        where: {
+          employeeNo: { in: salesPersonIds }
+        },
+        select: {
+          employeeNo: true,
+          name: true
+        }
+      })
+      
+      salesPersonnelMap = salesPersonnel.reduce((acc, person) => {
+        acc[person.employeeNo] = person
+        return acc
+      }, {} as Record<string, any>)
+    }
+    
+    // 轉換數據格式，與前端期望的格式匹配
     const formattedData = purchasedCustomers.map(customer => ({
       id: customer.id,
+      projectId: customer.projectId,
       customerName: customer.name,
-      phone: customer.phone || '',
       houseNo: customer.houseNo,
       purchaseDate: customer.purchaseDate,
       idCard: customer.idCard,
       isCorporate: customer.isCorporate,
       email: customer.email,
+      phone: customer.phone,
       age: customer.age,
       occupation: customer.occupation,
       registeredAddress: customer.registeredAddress,
       mailingAddress: customer.mailingAddress,
-      rating: customer.rating,
       remark: customer.remark,
-      projectId: customer.projectId,
+      rating: customer.rating,
+      salesPersonId: customer.salesId || null,
+      salesPerson: customer.salesId ? salesPersonnelMap[customer.salesId]?.name || '' : '',
       createdAt: customer.createdAt,
       updatedAt: customer.updatedAt
     }))
@@ -120,7 +110,7 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     const projectId = parseInt(params.id)
     const body = await request.json()
     const {
-      name,
+      customerName,
       houseNo,
       purchaseDate,
       idCard,
@@ -132,11 +122,12 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
       registeredAddress,
       mailingAddress,
       remark,
-      rating = 'C'
+      rating = 'C',
+      salesPersonId
     } = body
 
     // 驗證必填字段
-    if (!name || !houseNo) {
+    if (!customerName || !houseNo) {
       throw createValidationError('缺少必填字段：客戶姓名和房號為必填項')
     }
     
@@ -161,11 +152,25 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
       throw createValidationError('該房號已存在')
     }
     
+    // 如果提供了銷售人員ID，驗證銷售人員是否存在
+    if (salesPersonId) {
+      const salesPersonExists = await prisma.salesPersonnel.findFirst({
+        where: {
+          employeeNo: salesPersonId,
+          projectIds: { contains: projectId.toString() }
+        }
+      })
+      
+      if (!salesPersonExists) {
+        throw createValidationError('銷售人員不存在或無權限訪問此項目')
+      }
+    }
+    
     // 創建已購客戶記錄
     const newCustomer = await prisma.purchasedCustomer.create({
       data: {
         projectId,
-        name,
+        name: customerName,
         houseNo,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         idCard: idCard || null,
@@ -177,27 +182,33 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
         registeredAddress: registeredAddress || null,
         mailingAddress: mailingAddress || null,
         remark: remark || null,
-        rating: rating as any
+        rating: rating as any,
+        salesId: salesPersonId || null
+      },
+      include: {
+        salesPersonnel: true
       }
     })
     
     // 返回創建的記錄
     const responseData = {
       id: newCustomer.id,
+      projectId: newCustomer.projectId,
       customerName: newCustomer.name,
-      phone: newCustomer.phone || '',
       houseNo: newCustomer.houseNo,
       purchaseDate: newCustomer.purchaseDate,
       idCard: newCustomer.idCard,
       isCorporate: newCustomer.isCorporate,
       email: newCustomer.email,
+      phone: newCustomer.phone,
       age: newCustomer.age,
       occupation: newCustomer.occupation,
       registeredAddress: newCustomer.registeredAddress,
       mailingAddress: newCustomer.mailingAddress,
-      rating: newCustomer.rating,
       remark: newCustomer.remark,
-      projectId: newCustomer.projectId,
+      rating: newCustomer.rating,
+      salesPersonId: newCustomer.salesId,
+      salesPerson: newCustomer.salesPersonnel?.name || '',
       createdAt: newCustomer.createdAt,
       updatedAt: newCustomer.updatedAt
     }
