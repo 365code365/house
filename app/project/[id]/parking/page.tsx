@@ -36,6 +36,11 @@ export default function ParkingPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingSpace, setEditingSpace] = useState<ParkingSpace | null>(null)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0
+  })
   const [formData, setFormData] = useState<ParkingFormData>({
     spaceNumber: '',
     type: '平面',
@@ -52,11 +57,17 @@ export default function ParkingPage() {
       if (selectedType && selectedType !== 'all') params.append('type', selectedType)
       if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus)
       if (searchTerm) params.append('search', searchTerm)
+      params.append('page', pagination.page.toString())
+      params.append('pageSize', pagination.pageSize.toString())
       
       const response = await fetch(`/api/projects/${projectId}/parking?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setParkingSpaces(data)
+        setParkingSpaces(data.items || data)
+        setPagination(prev => ({
+          ...prev,
+          total: data.total || data.length
+        }))
       }
     } catch (error) {
       console.error('獲取停車位數據失敗:', error)
@@ -67,7 +78,16 @@ export default function ParkingPage() {
 
   useEffect(() => {
     fetchParkingSpaces()
-  }, [projectId, selectedType, selectedStatus, searchTerm])
+  }, [projectId, selectedType, selectedStatus, searchTerm, pagination.page, pagination.pageSize])
+
+  // 處理分頁變更
+  const handlePaginationChange = (page: number, pageSize?: number) => {
+    setPagination(prev => ({
+      ...prev,
+      page,
+      pageSize: pageSize || prev.pageSize
+    }))
+  }
 
   // 處理表單提交
   const handleSubmit = async (e: React.FormEvent) => {
@@ -500,6 +520,71 @@ export default function ParkingPage() {
           {parkingSpaces.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               暫無停車位數據
+            </div>
+          )}
+          {/* 分頁組件 */}
+          {pagination.total > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
+                顯示第 {((pagination.page - 1) * pagination.pageSize) + 1} 到{' '}
+                {Math.min(pagination.page * pagination.pageSize, pagination.total)} 項，
+                共 {pagination.total} 項
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500">每頁顯示</span>
+                  <Select
+                    value={pagination.pageSize.toString()}
+                    onValueChange={(value) => handlePaginationChange(1, parseInt(value))}
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-gray-500">項</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePaginationChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                  >
+                    上一頁
+                  </Button>
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, Math.ceil(pagination.total / pagination.pageSize)) }, (_, i) => {
+                      const pageNum = Math.max(1, pagination.page - 2) + i
+                      if (pageNum > Math.ceil(pagination.total / pagination.pageSize)) return null
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pageNum === pagination.page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePaginationChange(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePaginationChange(pagination.page + 1)}
+                    disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize)}
+                  >
+                    下一頁
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

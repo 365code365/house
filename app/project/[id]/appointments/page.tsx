@@ -88,6 +88,11 @@ export default function AppointmentsPage() {
   const [dateFilter, setDateFilter] = useState<Date | undefined>()
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>()
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0
+  })
   
   // 滚动位置保持
   const scrollPositionRef = useRef<number>(0)
@@ -113,11 +118,17 @@ export default function AppointmentsPage() {
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
       if (dateFilter) params.append('date', dateFilter.toISOString().split('T')[0])
+      params.append('page', pagination.page.toString())
+      params.append('pageSize', pagination.pageSize.toString())
       
       const response = await fetch(`/api/projects/${projectId}/appointments?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setAppointments(data)
+        setAppointments(data.appointments || data)
+        setPagination(prev => ({
+          ...prev,
+          total: data.total || data.length
+        }))
       } else {
         toast.error('獲取預約數據失敗')
       }
@@ -148,7 +159,16 @@ export default function AppointmentsPage() {
     }
     
     loadData()
-  }, [projectId, statusFilter, searchTerm, dateFilter])
+  }, [projectId, statusFilter, searchTerm, dateFilter, pagination.page, pagination.pageSize])
+  
+  // 處理分頁變更
+  const handlePaginationChange = (page: number, pageSize?: number) => {
+    setPagination(prev => ({
+      ...prev,
+      page,
+      pageSize: pageSize || prev.pageSize
+    }))
+  }
   
   // 重置表單
   const resetForm = () => {
@@ -718,6 +738,66 @@ export default function AppointmentsPage() {
                  )}
                </TableBody>
              </Table>
+             
+             {/* 分頁組件 */}
+             <div className="flex justify-between items-center mt-4">
+               <div className="text-sm text-muted-foreground">
+                 顯示第 {((pagination.page - 1) * pagination.pageSize) + 1} 到 {Math.min(pagination.page * pagination.pageSize, pagination.total)} 項，共 {pagination.total} 項
+               </div>
+               <div className="flex items-center gap-2">
+                 <Select
+                   value={pagination.pageSize.toString()}
+                   onValueChange={(value) => handlePaginationChange(1, parseInt(value))}
+                 >
+                   <SelectTrigger className="w-[100px]">
+                     <SelectValue />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="10">10 / 頁</SelectItem>
+                     <SelectItem value="20">20 / 頁</SelectItem>
+                     <SelectItem value="50">50 / 頁</SelectItem>
+                     <SelectItem value="100">100 / 頁</SelectItem>
+                   </SelectContent>
+                 </Select>
+                 
+                 <div className="flex items-center gap-1">
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => handlePaginationChange(pagination.page - 1)}
+                     disabled={pagination.page <= 1}
+                   >
+                     上一頁
+                   </Button>
+                   
+                   <div className="flex items-center gap-1">
+                     {Array.from({ length: Math.min(5, Math.ceil(pagination.total / pagination.pageSize)) }, (_, i) => {
+                       const pageNum = i + 1
+                       return (
+                         <Button
+                           key={pageNum}
+                           variant={pagination.page === pageNum ? "default" : "outline"}
+                           size="sm"
+                           onClick={() => handlePaginationChange(pageNum)}
+                           className="w-8 h-8 p-0"
+                         >
+                           {pageNum}
+                         </Button>
+                       )
+                     })}
+                   </div>
+                   
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => handlePaginationChange(pagination.page + 1)}
+                     disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize)}
+                   >
+                     下一頁
+                   </Button>
+                 </div>
+               </div>
+             </div>
            </CardContent>
          </Card>
        )}

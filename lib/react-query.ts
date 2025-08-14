@@ -32,8 +32,8 @@ export const queryKeys = {
   salesControl: {
     all: ['sales-control'] as const,
     lists: () => [...queryKeys.salesControl.all, 'list'] as const,
-    list: (projectId: number, filters?: any) => 
-      [...queryKeys.salesControl.lists(), projectId, filters] as const,
+    list: (projectId: number, filters?: any, pagination?: any) => 
+      [...queryKeys.salesControl.lists(), projectId, filters, pagination] as const,
     detail: (id: number) => [...queryKeys.salesControl.all, 'detail', id] as const,
     stats: (projectId: number) => [...queryKeys.salesControl.all, 'stats', projectId] as const,
   },

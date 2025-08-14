@@ -10,6 +10,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const type = searchParams.get('type')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    const page = parseInt(searchParams.get('page') || '1')
+    const pageSize = parseInt(searchParams.get('pageSize') || '10')
     
     // 驗證項目是否存在
     const projectExists = await prisma.project.findUnique({
@@ -41,11 +43,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       ]
     }
     
+    // 獲取總數
+    const total = await prisma.parkingSpace.count({
+      where: whereConditions
+    })
+    
+    // 計算分頁
+    const offset = (page - 1) * pageSize
+    const totalPages = Math.ceil(total / pageSize)
+    
     const parkingSpaces = await prisma.parkingSpace.findMany({
       where: whereConditions,
       orderBy: {
         parkingNo: 'asc'
-      }
+      },
+      skip: offset,
+      take: pageSize
     })
     
     // 轉換為前端期望的格式
@@ -64,7 +77,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       updatedAt: space.updatedAt
     }))
     
-    return NextResponse.json(formattedSpaces)
+    return NextResponse.json({
+      data: formattedSpaces,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages
+      }
+    })
   } catch (error) {
     console.error('獲取停車位數據失敗:', error)
     return NextResponse.json({ error: '獲取停車位數據失敗' }, { status: 500 })

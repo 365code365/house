@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { 
   AppstoreOutlined,
@@ -36,7 +36,7 @@ import SalesControlGrid from '@/components/sales-control/SalesControlGrid'
 import SalesControlTable from '@/components/sales-control/SalesControlTable'
 import AdvancedSearch from '@/components/sales-control/AdvancedSearch'
 import SalesStats from '@/components/sales-control/SalesStats'
-import ImportExportTools from '@/components/sales-control/ImportExportTools'
+import ImportExportActions from '@/components/sales-control/ImportExportActions'
 import { useSalesControlData } from '@/hooks/useSalesControl'
 
 const { Title, Paragraph, Text } = Typography
@@ -106,8 +106,19 @@ export default function SalesControlPage() {
     buyer: ''
   })
   
+  // 分頁狀態
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 20,
+    total: 0
+  })
+  
   // 使用React Query获取销控数据
-  const { data = [], isLoading, error, refetch } = useSalesControlData(projectId, filters)
+  const { data: apiResponse, isLoading, error, refetch } = useSalesControlData(projectId, filters, { page: pagination.page, pageSize: pagination.pageSize })
+  
+  // 解構API響應
+  const data = apiResponse?.data || []
+  const paginationInfo = apiResponse?.pagination || { page: 1, pageSize: 20, total: 0, totalPages: 1 }
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     'house_no', 'area', 'unit_price', 'house_total', 'sales_status', 
     'sales_person_name', 'deposit_date', 'sign_date'
@@ -122,6 +133,25 @@ export default function SalesControlPage() {
   const handleDataChange = () => {
     refetch()
   }
+
+  // 分頁變更處理函數
+  const handlePaginationChange = (page: number, pageSize?: number) => {
+    setPagination(prev => ({
+      ...prev,
+      page,
+      pageSize: pageSize || prev.pageSize
+    }))
+  }
+
+  // 更新分頁總數
+  React.useEffect(() => {
+    if (paginationInfo) {
+      setPagination(prev => ({
+        ...prev,
+        total: paginationInfo.total
+      }))
+    }
+  }, [paginationInfo])
 
 
 
@@ -262,9 +292,9 @@ export default function SalesControlPage() {
             {/* 匯入匯出 */}
             <Col>
               <Space wrap>
-                <ImportExportTools
+                <ImportExportActions
                    data={data}
-                   onImport={handleImport}
+                   onImportSuccess={handleDataChange}
                    projectId={projectId}
                  />
                 
@@ -379,6 +409,17 @@ export default function SalesControlPage() {
               visibleColumns={visibleColumns}
               onDataChange={handleDataChange}
               projectId={projectId}
+              pagination={{
+                current: pagination.page,
+                pageSize: pagination.pageSize,
+                total: paginationInfo.total,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `第 ${range[0]}-${range[1]} 條，共 ${total} 條`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                onChange: handlePaginationChange,
+                onShowSizeChange: handlePaginationChange
+              }}
             />
           )}
         </>

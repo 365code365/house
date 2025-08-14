@@ -3,11 +3,17 @@ import { queryKeys } from '@/lib/react-query'
 import type { SalesControlData } from '@/components/sales-control/SalesControlTable'
 
 // 获取销控数据的hook
-export function useSalesControlData(projectId: number, filters?: any) {
+export function useSalesControlData(projectId: number, filters?: any, pagination?: { page?: number; pageSize?: number }) {
   return useQuery({
-    queryKey: queryKeys.salesControl.list(projectId, filters),
+    queryKey: queryKeys.salesControl.list(projectId, filters, pagination),
     queryFn: async () => {
       const params = new URLSearchParams()
+      
+      // 添加分页参数
+      if (pagination) {
+        if (pagination.page) params.append('page', pagination.page.toString())
+        if (pagination.pageSize) params.append('pageSize', pagination.pageSize.toString())
+      }
       
       if (filters) {
         // 处理基本筛选条件
@@ -31,7 +37,8 @@ export function useSalesControlData(projectId: number, filters?: any) {
       if (!response.ok) {
         throw new Error('获取销控数据失败')
       }
-      return response.json() as Promise<SalesControlData[]>
+      const result = await response.json()
+      return result
     },
     enabled: !!projectId,
     // 每30秒自动刷新数据

@@ -62,6 +62,17 @@ interface SalesControlTableProps {
   visibleColumns: string[]
   onDataChange: () => void
   projectId: number
+  pagination?: {
+    current: number
+    pageSize: number
+    total: number
+    showSizeChanger?: boolean
+    showQuickJumper?: boolean
+    showTotal?: (total: number, range: [number, number]) => string
+    pageSizeOptions?: string[]
+    onChange: (page: number, pageSize?: number) => void
+    onShowSizeChange?: (page: number, pageSize: number) => void
+  }
 }
 
 
@@ -84,7 +95,8 @@ function SalesControlTable({
   data,
   visibleColumns,
   onDataChange,
-  projectId
+  projectId,
+  pagination
 }: SalesControlTableProps) {
   // React Query mutations
   const updateMutation = useUpdateSalesControl(projectId)
@@ -192,6 +204,39 @@ function SalesControlTable({
     }
   }
 
+  const handleBatchDelete = () => {
+    if (selectedRowKeys.length === 0) return
+    
+    Modal.confirm({
+      title: '確認批量刪除',
+      content: `確定要刪除選中的 ${selectedRowKeys.length} 條銷控記錄嗎？此操作不可恢復。`,
+      okText: '確認刪除',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          const response = await fetch(`/api/projects/${projectId}/sales-control/batch`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ids: selectedRowKeys }),
+          })
+          
+          if (!response.ok) {
+            throw new Error('批量刪除失敗')
+          }
+          
+          message.success(`成功刪除 ${selectedRowKeys.length} 條記錄`)
+          setSelectedRowKeys([])
+          onDataChange()
+        } catch (error) {
+          message.error('批量刪除失敗')
+        }
+      },
+    })
+  }
+
   const batchMenuItems: MenuProps['items'] = [
     {
       key: '1',
@@ -220,6 +265,15 @@ function SalesControlTable({
       key: '5',
       label: '設為不銷售',
       onClick: () => handleBatchStatusChange('不銷售'),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: '6',
+      label: '批量刪除',
+      danger: true,
+      onClick: handleBatchDelete,
     },
   ]
 
@@ -464,7 +518,7 @@ function SalesControlTable({
         columns={columns}
         dataSource={data}
         rowKey="id"
-        pagination={false}
+        pagination={pagination || false}
         scroll={{ x: 'max-content' }}
         rowSelection={rowSelection}
       />

@@ -21,6 +21,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     
+    // 分頁參數
+    const page = parseInt(searchParams.get('page') || '1')
+    const pageSize = parseInt(searchParams.get('pageSize') || '10')
+    const skip = (page - 1) * pageSize
+    
     // 驗證項目是否存在
     const projectExists = await prisma.project.findUnique({
       where: { id: projectId }
@@ -98,6 +103,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       ]
     }
     
+    // 獲取總數
+    const total = await prisma.salesControl.count({
+      where: whereConditions
+    })
+    
     // 獲取銷控數據，包含關聯的銷售人員信息
     const salesControl = await prisma.salesControl.findMany({
       where: whereConditions,
@@ -113,7 +123,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         { building: 'asc' },
         { floor: 'asc' },
         { houseNo: 'asc' }
-      ]
+      ],
+      skip: skip,
+      take: pageSize
     })
     
     // 為每條記錄獲取停車位詳細信息
@@ -179,7 +191,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       })
     )
     
-    return NextResponse.json(salesControlWithParkingDetails)
+    return NextResponse.json({
+      data: salesControlWithParkingDetails,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize)
+      }
+    })
   } catch (error) {
     console.error('獲取銷控數據失敗:', error)
     return NextResponse.json({ error: '獲取銷控數據失敗' }, { status: 500 })

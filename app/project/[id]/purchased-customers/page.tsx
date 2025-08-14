@@ -55,6 +55,11 @@ export default function PurchasedCustomersPage() {
   const params = useParams()
   const projectId = params.id as string
   const [customerData, setCustomerData] = useState<PurchasedCustomerItem[]>([])
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0
+  })
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isDetailDrawerVisible, setIsDetailDrawerVisible] = useState(false)
   const [editingItem, setEditingItem] = useState<PurchasedCustomerItem | null>(null)
@@ -191,6 +196,7 @@ export default function PurchasedCustomersPage() {
   useEffect(() => {
     // 模拟加载数据
     setCustomerData(mockData)
+    setPagination(prev => ({ ...prev, total: mockData.length }))
   }, [])
 
   const handleAdd = () => {
@@ -517,11 +523,19 @@ export default function PurchasedCustomersPage() {
           rowKey="id"
           scroll={{ x: 1500, y: 600 }}
           pagination={{
-            total: customerData.length,
-            pageSize: 10,
+            current: pagination.page,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 項，共 ${total} 項`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: (page, pageSize) => {
+              setPagination(prev => ({ ...prev, page, pageSize }))
+            },
+            onShowSizeChange: (current, size) => {
+              setPagination(prev => ({ ...prev, page: 1, pageSize: size }))
+            }
           }}
         />
       </Card>

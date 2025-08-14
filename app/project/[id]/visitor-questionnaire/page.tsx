@@ -44,6 +44,11 @@ export default function VisitorQuestionnairePage() {
   const projectId = params.id as string
   const [loading, setLoading] = useState(true)
   const [questionnaireData, setQuestionnaireData] = useState<VisitorQuestionnaireItem[]>([])
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0
+  })
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false)
   const [editingItem, setEditingItem] = useState<VisitorQuestionnaireItem | null>(null)
@@ -177,6 +182,7 @@ export default function VisitorQuestionnairePage() {
     // 模拟数据加载
     setTimeout(() => {
       setQuestionnaireData(mockData)
+      setPagination(prev => ({ ...prev, total: mockData.length }))
       setLoading(false)
     }, 1000)
   }, [projectId])
@@ -515,10 +521,19 @@ export default function VisitorQuestionnairePage() {
           rowKey="id"
           scroll={{ x: 1400 }}
           pagination={{
-            pageSize: 10,
+            current: pagination.page,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 項，共 ${total} 項`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: (page, pageSize) => {
+              setPagination(prev => ({ ...prev, page, pageSize }))
+            },
+            onShowSizeChange: (current, size) => {
+              setPagination(prev => ({ ...prev, page: 1, pageSize: size }))
+            }
           }}
         />
       </Card>

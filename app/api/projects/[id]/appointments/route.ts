@@ -12,6 +12,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const status = searchParams.get('status')
     const search = searchParams.get('search')
     const date = searchParams.get('date')
+    const page = parseInt(searchParams.get('page') || '1')
+    const pageSize = parseInt(searchParams.get('pageSize') || '10')
     
     // 驗證項目是否存在
     const projectExists = await executeQuery(
@@ -43,6 +45,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       queryParams.push(date)
     }
     
+    // 獲取總數
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM customer_appointment 
+      ${whereClause}
+    `
+    
+    const countResult = await executeQuery(countQuery, queryParams) as any[]
+    const total = countResult[0]?.total || 0
+    
+    // 計算分頁
+    const offset = (page - 1) * pageSize
+    const totalPages = Math.ceil(total / pageSize)
+    
     const query = `
       SELECT 
         id,
@@ -59,11 +75,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       FROM customer_appointment 
       ${whereClause}
       ORDER BY start_time DESC
+      LIMIT ? OFFSET ?
     `
     
-    const appointments = await executeQuery(query, queryParams)
+    const appointments = await executeQuery(query, [...queryParams, pageSize, offset])
     
-    return NextResponse.json(appointments)
+    return NextResponse.json({
+      data: appointments,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages
+      }
+    })
   } catch (error) {
     console.error('獲取預約數據失敗:', error)
     return NextResponse.json({ error: '獲取預約數據失敗' }, { status: 500 })

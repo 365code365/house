@@ -44,6 +44,11 @@ export default function DepositPage() {
     dayjs().subtract(11, 'month').startOf('month'),
     dayjs().endOf('month')
   ])
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0
+  })
 
   // 模拟数据
   const mockData: DepositItem[] = [
@@ -108,9 +113,18 @@ export default function DepositPage() {
     // 模拟数据加载
     setTimeout(() => {
       setDepositData(mockData)
+      setPagination(prev => ({ ...prev, total: mockData.length }))
       setLoading(false)
     }, 1000)
-  }, [projectId])
+  }, [projectId, pagination.page, pagination.pageSize])
+
+  const handlePaginationChange = (page: number, pageSize?: number) => {
+    setPagination(prev => ({
+      ...prev,
+      page,
+      pageSize: pageSize || prev.pageSize
+    }))
+  }
 
   const handleAdd = () => {
     setEditingItem(null)
@@ -413,10 +427,15 @@ export default function DepositPage() {
           rowKey="id"
           scroll={{ x: 1200 }}
           pagination={{
-            pageSize: 10,
+            current: pagination.page,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 項，共 ${total} 項`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: handlePaginationChange,
+            onShowSizeChange: handlePaginationChange
           }}
           rowClassName={(record) => 
             isOverdue(record.dueDate, record.paymentStatus) ? 'bg-red-50' : ''
