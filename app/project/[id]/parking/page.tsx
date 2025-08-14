@@ -15,13 +15,13 @@ import { ParkingSpace } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 
 interface ParkingFormData {
-  spaceNumber: string
+  parkingNo: string
   type: string
   location: string
   price: number
   status: string
-  customerName?: string
-  salesPerson?: string
+  buyer?: string
+  salesId?: string
   contractDate?: string
 }
 
@@ -30,6 +30,7 @@ export default function ParkingPage() {
   const projectId = params.id as string
   
   const [parkingSpaces, setParkingSpaces] = useState<ParkingSpace[]>([])
+  const [salesPersonnel, setSalesPersonnel] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
@@ -42,12 +43,25 @@ export default function ParkingPage() {
     total: 0
   })
   const [formData, setFormData] = useState<ParkingFormData>({
-    spaceNumber: '',
+    parkingNo: '',
     type: '平面',
     location: '',
     price: 0,
     status: 'available'
   })
+
+  // 獲取銷售人員數據
+  const fetchSalesPersonnel = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/sales-personnel`)
+      if (response.ok) {
+        const data = await response.json()
+        setSalesPersonnel(data || [])
+      }
+    } catch (error) {
+      console.error('獲取銷售人員數據失敗:', error)
+    }
+  }
 
   // 獲取停車位數據
   const fetchParkingSpaces = async () => {
@@ -77,8 +91,18 @@ export default function ParkingPage() {
   }
 
   useEffect(() => {
+    fetchSalesPersonnel()
     fetchParkingSpaces()
   }, [projectId, selectedType, selectedStatus, searchTerm, pagination.page, pagination.pageSize])
+
+  // 創建銷售人員映射
+  const salesPersonMap = useMemo(() => {
+    const map: { [key: string]: string } = {}
+    salesPersonnel.forEach(person => {
+      map[person.employee_no] = person.name
+    })
+    return map
+  }, [salesPersonnel])
 
   // 處理分頁變更
   const handlePaginationChange = (page: number, pageSize?: number) => {
@@ -87,6 +111,14 @@ export default function ParkingPage() {
       page,
       pageSize: pageSize || prev.pageSize
     }))
+  }
+
+  // 狀態值映射：前端到後端
+  const statusMapping = {
+    'available': 'AVAILABLE',
+    'reserved': 'DEPOSIT',
+    'sold': 'SOLD',
+    'unavailable': 'UNAVAILABLE'
   }
 
   // 處理表單提交
@@ -106,13 +138,13 @@ export default function ParkingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          spaceNumber: formData.spaceNumber,
+          parkingNo: formData.parkingNo,
           type: formData.type,
           location: formData.location,
           price: formData.price,
-          status: formData.status,
-          customerName: formData.customerName || null,
-          salesPerson: formData.salesPerson || null,
+          status: statusMapping[formData.status as keyof typeof statusMapping] || formData.status,
+          buyer: formData.buyer || null,
+          salesId: formData.salesId || null,
           contractDate: formData.contractDate || null,
         }),
       })
@@ -135,7 +167,7 @@ export default function ParkingPage() {
   // 重置表單
   const resetForm = () => {
     setFormData({
-      spaceNumber: '',
+      parkingNo: '',
       type: '平面',
       location: '',
       price: 0,
@@ -143,18 +175,26 @@ export default function ParkingPage() {
     })
   }
 
+  // 狀態值映射：後端到前端
+  const reverseStatusMapping = {
+    'AVAILABLE': 'available',
+    'DEPOSIT': 'reserved',
+    'SOLD': 'sold',
+    'UNAVAILABLE': 'unavailable'
+  }
+
   // 處理編輯
   const handleEdit = (space: ParkingSpace) => {
     setEditingSpace(space)
     setFormData({
-      spaceNumber: space.parkingNo,
+      parkingNo: space.parkingNo,
       type: space.type || '平面',
       location: space.location || '',
       price: Number(space.price),
-      status: space.salesStatus,
-      customerName: space.buyer || '',
-      salesPerson: space.salesId || '',
-      contractDate: space.salesDate ? space.salesDate.toISOString().split('T')[0] : '',
+      status: reverseStatusMapping[space.salesStatus as keyof typeof reverseStatusMapping] || (space.salesStatus ? space.salesStatus.toLowerCase() : 'available'),
+      buyer: space.buyer || '',
+      salesId: space.salesId || '',
+      contractDate: space.salesDate ? (space.salesDate instanceof Date ? space.salesDate.toISOString().split('T')[0] : new Date(space.salesDate).toISOString().split('T')[0]) : '',
     })
     setIsCreateDialogOpen(true)
   }
@@ -180,31 +220,33 @@ export default function ParkingPage() {
     }
   }
 
-  // 狀態顏色映射
+  // 狀態顏色映射（後端返回大寫狀態值）
   const statusColors = {
-    available: 'bg-green-100 text-green-800',
-    reserved: 'bg-yellow-100 text-yellow-800',
-    sold: 'bg-blue-100 text-blue-800',
-    unavailable: 'bg-gray-100 text-gray-800',
+    AVAILABLE: 'bg-green-100 text-green-800',
+    DEPOSIT: 'bg-yellow-100 text-yellow-800',
+    SOLD: 'bg-red-100 text-red-800',
+    UNAVAILABLE: 'bg-gray-100 text-gray-800'
   }
 
+  // 狀態標籤映射（後端返回大寫狀態值）
   const statusLabels = {
-    available: '可售',
-    reserved: '預約',
-    sold: '已售',
-    unavailable: '不可售',
+    AVAILABLE: '可售',
+    DEPOSIT: '預約',
+    SOLD: '已售',
+    UNAVAILABLE: '不可售'
   }
 
+  // 類型標籤映射（後端返回英文枚舉值）
   const typeLabels = {
-    '平面': '平面車位',
-    '機械上層': '機械上層',
-    '機械中層': '機械中層',
-    '機械下層': '機械下層',
-    '機械平移': '機械平移',
-    '機車位': '機車位',
-    '腳踏車位': '腳踏車位',
-    '自設': '自設車位',
-    '法定': '法定車位',
+    FLAT: '平面車位',
+    MECHANICAL_UPPER: '機械上層',
+    MECHANICAL_MIDDLE: '機械中層',
+    MECHANICAL_LOWER: '機械下層',
+    MECHANICAL_SLIDING: '機械平移',
+    MOTORCYCLE: '機車位',
+    BICYCLE: '腳踏車位',
+    SELF_BUILT: '自設車位',
+    LEGAL: '法定車位'
   }
 
   // 統計數據 - 使用useMemo優化性能
@@ -246,11 +288,11 @@ export default function ParkingPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="spaceNumber">車位編號</Label>
+                <Label htmlFor="parkingNo">車位編號</Label>
                 <Input
-                  id="spaceNumber"
-                  value={formData.spaceNumber}
-                  onChange={(e) => setFormData({ ...formData, spaceNumber: e.target.value })}
+                  id="parkingNo"
+                  value={formData.parkingNo}
+                  onChange={(e) => setFormData({ ...formData, parkingNo: e.target.value })}
                   required
                 />
               </div>
@@ -316,20 +358,30 @@ export default function ParkingPage() {
               {(formData.status === 'reserved' || formData.status === 'sold') && (
                 <>
                   <div>
-                    <Label htmlFor="customerName">客戶姓名</Label>
+                    <Label htmlFor="buyer">客戶姓名</Label>
                     <Input
-                      id="customerName"
-                      value={formData.customerName || ''}
-                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                      id="buyer"
+                      value={formData.buyer || ''}
+                      onChange={(e) => setFormData({ ...formData, buyer: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="salesPerson">銷售人員</Label>
-                    <Input
-                      id="salesPerson"
-                      value={formData.salesPerson || ''}
-                      onChange={(e) => setFormData({ ...formData, salesPerson: e.target.value })}
-                    />
+                    <Label htmlFor="salesId">銷售人員</Label>
+                    <Select
+                      value={formData.salesId || ''}
+                      onValueChange={(value) => setFormData({ ...formData, salesId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇銷售人員" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {salesPersonnel.map((person) => (
+                          <SelectItem key={person.employee_no} value={person.employee_no}>
+                            {person.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="contractDate">合約日期</Label>
@@ -481,16 +533,16 @@ export default function ParkingPage() {
                 {parkingSpaces.map((space) => (
                   <TableRow key={space.id}>
                     <TableCell className="font-medium">{space.parkingNo}</TableCell>
-                    <TableCell>{typeLabels[space.type as keyof typeof typeLabels]}</TableCell>
+                    <TableCell>{typeLabels[space.type as keyof typeof typeLabels] || space.type}</TableCell>
                     <TableCell>{space.location}</TableCell>
                     <TableCell>{formatCurrency(Number(space.price))}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[space.salesStatus as keyof typeof statusColors]}>
-                          {statusLabels[space.salesStatus as keyof typeof statusLabels]}
+                      <Badge className={statusColors[space.salesStatus as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
+                          {statusLabels[space.salesStatus as keyof typeof statusLabels] || space.salesStatus}
                       </Badge>
                     </TableCell>
                     <TableCell>{space.buyer || '-'}</TableCell>
-                <TableCell>{space.salesId || '-'}</TableCell>
+                <TableCell>{salesPersonMap[space.salesId] || space.salesId || '-'}</TableCell>
                 <TableCell>
                   {space.salesDate ? new Date(space.salesDate).toLocaleDateString('zh-TW') : '-'}
                     </TableCell>

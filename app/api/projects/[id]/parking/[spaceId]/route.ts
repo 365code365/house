@@ -1,70 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+
+// 停車位類型映射：中文 -> 枚舉值
+const PARKING_TYPE_MAPPING: Record<string, string> = {
+  '平面': 'FLAT',
+  '機械上層': 'MECHANICAL_TOP',
+  '機械中層': 'MECHANICAL_MID',
+  '機械下層': 'MECHANICAL_BOT',
+  '機械平移': 'MECHANICAL_MOVE',
+  '機車位': 'MOTORCYCLE',
+  '腳踏車位': 'BICYCLE',
+  '自設': 'SELF_BUILT',
+  '法定': 'LEGAL'
+}
+
+// 將中文類型值轉換為枚舉值
+function mapParkingType(typeValue: string): string {
+  // 如果已經是英文枚舉值，直接返回
+  const validEnumValues = ['FLAT', 'MECHANICAL_TOP', 'MECHANICAL_MID', 'MECHANICAL_BOT', 'MECHANICAL_MOVE', 'MOTORCYCLE', 'BICYCLE', 'SELF_BUILT', 'LEGAL']
+  if (validEnumValues.includes(typeValue)) {
+    return typeValue
+  }
+  
+  // 否則從中文映射
+  const enumValue = PARKING_TYPE_MAPPING[typeValue]
+  if (!enumValue) {
+    throw createValidationError(`無效的停車位類型：${typeValue}`)
+  }
+  return enumValue
+}
+
+// 狀態值映射：前端到後端
+function mapParkingStatus(frontendStatus: string): string {
+  const statusMapping: Record<string, string> = {
+    'available': 'AVAILABLE',
+    'reserved': 'DEPOSIT', 
+    'sold': 'SOLD',
+    'unavailable': 'UNAVAILABLE'
+  }
+  
+  // 如果已經是大寫格式，直接返回
+  if (['AVAILABLE', 'DEPOSIT', 'SOLD', 'UNAVAILABLE'].includes(frontendStatus)) {
+    return frontendStatus
+  }
+  
+  return statusMapping[frontendStatus] || 'AVAILABLE'
+}
 
 // PUT - 更新停車位
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; spaceId: string } }
-) {
-  try {
-    const { id: projectId, spaceId } = params
-    const body = await request.json()
-    const {
-      spaceNumber,
-      spaceType,
-      location,
-      price,
-      status,
-      customerName,
-      salesPerson,
-      contractDate
-    } = body
-    
-    // 檢查停車位是否存在且屬於該項目
-    const existingSpace = await prisma.parkingSpace.findFirst({
-      where: {
-        id: parseInt(spaceId),
-        projectId: parseInt(projectId)
-      }
-    })
-    
-    if (!existingSpace) {
-      return NextResponse.json({ error: '停車位不存在' }, { status: 404 })
+) => {
+  const { id: projectId, spaceId } = params
+  const {
+    parkingNo,
+    type,
+    location,
+    price,
+    status,
+    buyer,
+    salesId,
+    contractDate
+  } = await request.json()
+  
+  // 檢查停車位是否存在且屬於該項目
+  const existingSpace = await prisma.parkingSpace.findFirst({
+    where: {
+      id: parseInt(spaceId),
+      projectId: parseInt(projectId)
     }
-    
-    // 檢查車位編號是否重複（排除當前記錄）
-    const duplicateSpace = await prisma.parkingSpace.findFirst({
-      where: {
-        projectId: parseInt(projectId),
-        parkingNo: spaceNumber,
-        id: { not: parseInt(spaceId) }
-      }
-    })
-      
-    if (duplicateSpace) {
-      return NextResponse.json({ error: '該車位編號已存在' }, { status: 400 })
-    }
-    
-    await prisma.parkingSpace.update({
-      where: { id: parseInt(spaceId) },
-      data: {
-        parkingNo: spaceNumber,
-        type: spaceType as any,
-        location: location,
-        price: parseFloat(price),
-        salesStatus: status as any,
-        buyer: customerName || null,
-        salesId: salesPerson || null,
-        salesDate: contractDate ? new Date(contractDate) : null
-      }
-    })
-    
-    return NextResponse.json({ message: '停車位已更新' })
-  } catch (error) {
-    console.error('更新停車位失敗:', error)
-    return NextResponse.json({ error: '更新停車位失敗' }, { status: 500 })
+  })
+  
+  if (!existingSpace) {
+    throw createNotFoundError('停車位不存在')
   }
-}
+  
+  // 檢查車位編號是否重複（排除當前記錄）
+  const duplicateSpace = await prisma.parkingSpace.findFirst({
+    where: {
+      projectId: parseInt(projectId),
+      parkingNo: parkingNo,
+      id: { not: parseInt(spaceId) }
+    }
+  })
+    
+  if (duplicateSpace) {
+    throw createValidationError('該車位編號已存在')
+  }
+  
+  // 映射停車位類型和狀態值
+  const mappedType = mapParkingType(type)
+  const mappedStatus = mapParkingStatus(status)
+  
+  await prisma.parkingSpace.update({
+    where: { id: parseInt(spaceId) },
+    data: {
+      parkingNo: parkingNo,
+      type: mappedType as any,
+      location: location,
+      price: parseFloat(price),
+      salesStatus: mappedStatus as any,
+      buyer: buyer || null,
+      salesId: salesId || null,
+      salesDate: contractDate ? new Date(contractDate) : null
+    }
+  })
+  
+  return createSuccessResponse({ message: '停車位已更新' })
+})
 
 // DELETE - 刪除停車位
 export async function DELETE(
@@ -126,16 +171,16 @@ export async function GET(
     // 轉換為前端期望的格式
     return NextResponse.json({
       id: parkingSpace.id,
-      space_number: parkingSpace.parkingNo,
-      space_type: parkingSpace.type,
+      parkingNo: parkingSpace.parkingNo,
+      type: parkingSpace.type,
       location: parkingSpace.location,
       price: parkingSpace.price,
       status: parkingSpace.salesStatus,
-      customer_name: parkingSpace.buyer,
-      sales_person: parkingSpace.salesId,
-      contract_date: parkingSpace.salesDate,
-      created_at: parkingSpace.createdAt,
-      updated_at: parkingSpace.updatedAt
+      buyer: parkingSpace.buyer,
+      salesId: parkingSpace.salesId,
+      contractDate: parkingSpace.salesDate,
+      createdAt: parkingSpace.createdAt,
+      updatedAt: parkingSpace.updatedAt
     })
   } catch (error) {
     console.error('獲取停車位詳情失敗:', error)

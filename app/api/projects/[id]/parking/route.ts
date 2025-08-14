@@ -3,6 +3,35 @@ import { prisma } from '@/lib/db'
 import type { ParkingSpace } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
 
+// 停車位類型映射：中文 -> 枚舉值
+const PARKING_TYPE_MAPPING: Record<string, string> = {
+  '平面': 'FLAT',
+  '機械上層': 'MECHANICAL_TOP',
+  '機械中層': 'MECHANICAL_MID',
+  '機械下層': 'MECHANICAL_BOT',
+  '機械平移': 'MECHANICAL_MOVE',
+  '機車位': 'MOTORCYCLE',
+  '腳踏車位': 'BICYCLE',
+  '自設': 'SELF_BUILT',
+  '法定': 'LEGAL'
+}
+
+// 將中文類型值轉換為枚舉值
+function mapParkingType(typeValue: string): string {
+  // 如果已經是英文枚舉值，直接返回
+  const validEnumValues = ['FLAT', 'MECHANICAL_TOP', 'MECHANICAL_MID', 'MECHANICAL_BOT', 'MECHANICAL_MOVE', 'MOTORCYCLE', 'BICYCLE', 'SELF_BUILT', 'LEGAL']
+  if (validEnumValues.includes(typeValue)) {
+    return typeValue
+  }
+  
+  // 否則從中文映射
+  const enumValue = PARKING_TYPE_MAPPING[typeValue]
+  if (!enumValue) {
+    throw createValidationError(`無效的停車位類型：${typeValue}`)
+  }
+  return enumValue
+}
+
 // GET - 獲取項目的停車位數據
 export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
@@ -65,19 +94,19 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
     const formattedSpaces = parkingSpaces.map(space => ({
       id: space.id,
       projectId: space.projectId,
-      spaceNumber: space.parkingNo,
+      parkingNo: space.parkingNo,
       type: space.type,
       location: space.location,
       price: space.price,
       status: space.salesStatus,
-      customerName: space.buyer,
-      salesPerson: space.salesId,
+      buyer: space.buyer,
+      salesId: space.salesId,
       contractDate: space.salesDate,
       createdAt: space.createdAt,
       updatedAt: space.updatedAt
     }))
     
-    return createSuccessResponse(parkingSpaces, {
+    return createSuccessResponse(formattedSpaces, {
       page,
       limit: pageSize,
       total,
@@ -85,23 +114,40 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
     })
 })
 
+// 狀態值映射：前端到後端
+function mapParkingStatus(frontendStatus: string): string {
+  const statusMapping: Record<string, string> = {
+    'available': 'AVAILABLE',
+    'reserved': 'DEPOSIT', 
+    'sold': 'SOLD',
+    'unavailable': 'UNAVAILABLE'
+  }
+  
+  // 如果已經是大寫格式，直接返回
+  if (['AVAILABLE', 'DEPOSIT', 'SOLD', 'UNAVAILABLE'].includes(frontendStatus)) {
+    return frontendStatus
+  }
+  
+  return statusMapping[frontendStatus] || 'AVAILABLE'
+}
+
 // POST - 創建新的停車位
 export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const body = await request.json()
     const {
-      spaceNumber,
+      parkingNo,
       type,
       location,
       price,
       status = 'available',
-      customerName,
-      salesPerson,
+      buyer,
+      salesId,
       contractDate
     } = body
     
     // 驗證必填字段
-    if (!spaceNumber || !type || !location || price === undefined) {
+    if (!parkingNo || !type || !location || price === undefined) {
       throw createValidationError('缺少必填字段：車位編號、類型、位置、價格為必填項')
     }
     
@@ -118,7 +164,7 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     const existingSpace = await prisma.parkingSpace.findFirst({
       where: {
         projectId: parseInt(projectId),
-        parkingNo: spaceNumber
+        parkingNo: parkingNo
       }
     })
     
@@ -126,17 +172,21 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
       throw createValidationError('該車位編號已存在')
     }
     
+    // 轉換類型值和狀態值
+    const mappedType = mapParkingType(type)
+    const mappedStatus = mapParkingStatus(status)
+    
     // 創建停車位記錄
     const newRecord = await prisma.parkingSpace.create({
       data: {
         projectId: parseInt(projectId),
-        parkingNo: spaceNumber,
-        type: type as any,
+        parkingNo: parkingNo,
+        type: mappedType as any,
         location: location,
         price: parseFloat(price),
-        salesStatus: status as any || 'AVAILABLE',
-        buyer: customerName || null,
-        salesId: salesPerson || null,
+        salesStatus: mappedStatus as any,
+        buyer: buyer || null,
+        salesId: salesId || null,
         salesDate: contractDate ? new Date(contractDate) : null
       }
     })
@@ -145,13 +195,13 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     const formattedRecord = {
       id: newRecord.id,
       projectId: newRecord.projectId,
-      spaceNumber: newRecord.parkingNo,
+      parkingNo: newRecord.parkingNo,
       type: newRecord.type,
       location: newRecord.location,
       price: newRecord.price,
       status: newRecord.salesStatus,
-      customerName: newRecord.buyer,
-      salesPerson: newRecord.salesId,
+      buyer: newRecord.buyer,
+      salesId: newRecord.salesId,
       contractDate: newRecord.salesDate,
       createdAt: newRecord.createdAt,
       updatedAt: newRecord.updatedAt
