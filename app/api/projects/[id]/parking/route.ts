@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { ParkingSpace } from '@/lib/db'
+import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
 
 // GET - 獲取項目的停車位數據
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     })
     
     if (!projectExists) {
-      return NextResponse.json({ error: '項目不存在' }, { status: 404 })
+      throw createNotFoundError('項目不存在')
     }
     
     // 構建查詢條件
@@ -77,24 +77,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       updatedAt: space.updatedAt
     }))
     
-    return NextResponse.json({
-      data: formattedSpaces,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages
-      }
+    return createSuccessResponse(parkingSpaces, {
+      page,
+      limit: pageSize,
+      total,
+      totalPages
     })
-  } catch (error) {
-    console.error('獲取停車位數據失敗:', error)
-    return NextResponse.json({ error: '獲取停車位數據失敗' }, { status: 500 })
-  }
-}
+})
 
 // POST - 創建新的停車位
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const body = await request.json()
     const {
@@ -110,7 +102,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     
     // 驗證必填字段
     if (!spaceNumber || !type || !location || price === undefined) {
-      return NextResponse.json({ error: '缺少必填字段' }, { status: 400 })
+      throw createValidationError('缺少必填字段：車位編號、類型、位置、價格為必填項')
     }
     
     // 驗證項目是否存在
@@ -119,7 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
     
     if (!projectExists) {
-      return NextResponse.json({ error: '項目不存在' }, { status: 404 })
+      throw createNotFoundError('項目不存在')
     }
     
     // 檢查車位編號是否已存在
@@ -131,7 +123,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
     
     if (existingSpace) {
-      return NextResponse.json({ error: '該車位編號已存在' }, { status: 400 })
+      throw createValidationError('該車位編號已存在')
     }
     
     // 創建停車位記錄
@@ -150,7 +142,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
     
     // 返回創建的記錄，轉換為前端期望的格式
-    return NextResponse.json({
+    const formattedRecord = {
       id: newRecord.id,
       projectId: newRecord.projectId,
       spaceNumber: newRecord.parkingNo,
@@ -163,9 +155,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       contractDate: newRecord.salesDate,
       createdAt: newRecord.createdAt,
       updatedAt: newRecord.updatedAt
-    }, { status: 201 })
-  } catch (error) {
-    console.error('創建停車位失敗:', error)
-    return NextResponse.json({ error: '創建停車位失敗' }, { status: 500 })
-  }
-}
+    }
+    
+    return createSuccessResponse(formattedRecord, undefined, 201)
+})

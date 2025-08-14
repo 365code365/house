@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
 
 // GET - 獲取項目的預算數據
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     })
     
     if (!projectExists) {
-      return NextResponse.json({ error: '項目不存在' }, { status: 404 })
+      throw createNotFoundError('項目不存在')
     }
     
     // 構建查詢條件
@@ -56,24 +56,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       take: pageSize
     })
     
-    return NextResponse.json({
-      data: budgetPlans,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages
-      }
+    return createSuccessResponse(budgetPlans, {
+      page,
+      limit: pageSize,
+      total,
+      totalPages
     })
-  } catch (error) {
-    console.error('獲取預算數據失敗:', error)
-    return NextResponse.json({ error: '獲取預算數據失敗' }, { status: 500 })
-  }
-}
+})
 
 // POST - 創建新的預算記錄
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const body = await request.json()
     const {
@@ -90,7 +82,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     
     // 驗證必填字段
     if (!category || !item || budget === undefined) {
-      return NextResponse.json({ error: '缺少必填字段' }, { status: 400 })
+      throw createValidationError('缺少必填字段：類別、項目、預算金額為必填項')
     }
     
     // 驗證項目是否存在
@@ -99,7 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
     
     if (!projectExists) {
-      return NextResponse.json({ error: '項目不存在' }, { status: 404 })
+      throw createNotFoundError('項目不存在')
     }
     
     // 創建預算記錄
@@ -118,9 +110,5 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
     })
     
-    return NextResponse.json(newRecord, { status: 201 })
-  } catch (error) {
-    console.error('創建預算記錄失敗:', error)
-    return NextResponse.json({ error: '創建預算記錄失敗' }, { status: 500 })
-  }
-}
+    return createSuccessResponse(newRecord, undefined, 201)
+})

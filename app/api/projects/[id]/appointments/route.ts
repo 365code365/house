@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db'
 import { PrismaClient } from '@prisma/client'
+import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
 
 const prisma = new PrismaClient()
 
 // GET - 獲取項目的預約數據
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     )
     
     if (!Array.isArray(projectExists) || projectExists.length === 0) {
-      return NextResponse.json({ error: '項目不存在' }, { status: 404 })
+      throw createNotFoundError('項目不存在')
     }
     
     // 構建查詢條件
@@ -80,24 +80,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     
     const appointments = await executeQuery(query, [...queryParams, pageSize, offset])
     
-    return NextResponse.json({
-      data: appointments,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages
-      }
+    return createSuccessResponse(appointments, {
+      page,
+      limit: pageSize,
+      total,
+      totalPages
     })
-  } catch (error) {
-    console.error('獲取預約數據失敗:', error)
-    return NextResponse.json({ error: '獲取預約數據失敗' }, { status: 500 })
-  }
-}
+})
 
 // POST - 創建新的預約
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
+export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const body = await request.json()
     
@@ -167,7 +159,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // 驗證必填字段
     if (!customer_name || !mappedPhone || !mappedStartTime || !mappedEndTime) {
-      return NextResponse.json({ error: '缺少必填字段' }, { status: 400 })
+      throw createValidationError('缺少必填字段：客戶姓名、電話、開始時間、結束時間為必填項')
     }
     
     // 驗證項目是否存在
@@ -177,7 +169,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     )
     
     if (!Array.isArray(projectExists) || projectExists.length === 0) {
-      return NextResponse.json({ error: '項目不存在' }, { status: 404 })
+      throw createNotFoundError('項目不存在')
     }
     
     // 檢查同一時間是否已有預約
@@ -187,7 +179,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     )
     
     if (Array.isArray(conflictingAppointment) && conflictingAppointment.length > 0) {
-      return NextResponse.json({ error: '該時間段已有預約' }, { status: 400 })
+      throw createValidationError('該時間段已有預約')
     }
     
     // 調試：打印sales_id值
@@ -209,12 +201,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     
     if (result && result.id) {
       // Prisma Client已經返回完整的記錄
-      return NextResponse.json(result, { status: 201 })
+      return createSuccessResponse(result, undefined, 201)
     }
     
-    return NextResponse.json({ error: '創建預約失敗' }, { status: 500 })
-  } catch (error) {
-    console.error('創建預約失敗:', error)
-    return NextResponse.json({ error: '創建預約失敗' }, { status: 500 })
-  }
-}
+    throw new Error('創建預約失敗')
+})

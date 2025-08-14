@@ -20,9 +20,10 @@ import {
     FileOutlined,
     MoneyCollectOutlined,
     DollarCircleOutlined,
-    MenuOutlined
+    MenuOutlined,
+    SearchOutlined
 } from '@ant-design/icons'
-import {Layout, Menu, Button, Spin, Typography, Drawer} from 'antd'
+import {Layout, Menu, Button, Spin, Typography, Drawer, Input, AutoComplete} from 'antd'
 import type {MenuProps} from 'antd'
 
 const {Header, Sider, Content} = Layout
@@ -137,12 +138,62 @@ export default function ProjectLayout({
     const [loading, setLoading] = useState(true)
     const [collapsed, setCollapsed] = useState(false)
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
+    const [searchValue, setSearchValue] = useState('')
+    const [searchOptions, setSearchOptions] = useState<{value: string, label: string, path: string}[]>([])
 
     useEffect(() => {
         if (projectId) {
             fetchProject()
         }
     }, [projectId])
+
+    // 生成搜索選項
+    const generateSearchOptions = () => {
+        const menuItems = getMenuItems(projectId)
+        const options: {value: string, label: string, path: string}[] = []
+        
+        const extractItems = (items: MenuItem[]) => {
+            items.forEach((item: any) => {
+                if (item.children) {
+                    extractItems(item.children)
+                } else if (item.label && typeof item.label === 'object' && item.label.props?.href) {
+                    const labelText = item.label.props.children
+                    options.push({
+                        value: labelText,
+                        label: labelText,
+                        path: item.label.props.href
+                    })
+                }
+            })
+        }
+        
+        extractItems(menuItems)
+        return options
+    }
+
+    // 處理搜索
+    const handleSearch = (value: string) => {
+        setSearchValue(value)
+        if (value) {
+            const allOptions = generateSearchOptions()
+            const filteredOptions = allOptions.filter(option => 
+                option.label.toLowerCase().includes(value.toLowerCase())
+            )
+            setSearchOptions(filteredOptions)
+        } else {
+            setSearchOptions([])
+        }
+    }
+
+    // 處理選擇
+    const handleSelect = (value: string) => {
+        const option = searchOptions.find(opt => opt.value === value)
+        if (option) {
+            router.push(option.path)
+            setSearchValue('')
+            setSearchOptions([])
+        }
+    }
 
     const fetchProject = async () => {
         try {
@@ -280,6 +331,67 @@ export default function ProjectLayout({
                                 <Title level={4} style={{margin: 0, color: '#1f2937'}}>銷售管理系統</Title>
                             </Link>
                         </div>
+                        
+                        {/* 菜單搜索 */}
+                        <div style={{
+                            flex: 1, 
+                            display: 'flex', 
+                            justifyContent: 'center', 
+                            maxWidth: '400px', 
+                            margin: '0 24px'
+                        }} className="hidden md:flex">
+                            <AutoComplete
+                                value={searchValue}
+                                options={searchOptions.map(option => ({
+                                    value: option.value,
+                                    label: (
+                                        <div style={{
+                                            display: 'flex', 
+                                            alignItems: 'center',
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            transition: 'background-color 0.2s'
+                                        }}>
+                                            <SearchOutlined style={{marginRight: '8px', color: '#1890ff', fontSize: '14px'}} />
+                                            <span style={{fontSize: '14px'}}>{option.label}</span>
+                                        </div>
+                                    )
+                                }))}
+                                onSearch={handleSearch}
+                                onSelect={handleSelect}
+                                placeholder="搜索菜單功能..."
+                                style={{width: '100%'}}
+                                allowClear
+                                filterOption={false}
+                                dropdownStyle={{
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                                }}
+                            >
+                                <Input
+                                    prefix={<SearchOutlined style={{color: '#bfbfbf'}} />}
+                                    style={{
+                                        borderRadius: '20px',
+                                        backgroundColor: '#f8f9fa',
+                                        border: '1px solid #e1e5e9',
+                                        height: '36px',
+                                        fontSize: '14px',
+                                        transition: 'all 0.2s ease-in-out'
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.backgroundColor = '#ffffff'
+                                        e.target.style.borderColor = '#1890ff'
+                                        e.target.style.boxShadow = '0 0 0 2px rgba(24, 144, 255, 0.2)'
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.backgroundColor = '#f8f9fa'
+                                        e.target.style.borderColor = '#e1e5e9'
+                                        e.target.style.boxShadow = 'none'
+                                    }}
+                                />
+                            </AutoComplete>
+                        </div>
+                        
                         <div style={{textAlign: 'right'}}>
                             <Title level={5} style={{margin: 0, color: '#1f2937'}}>{project.name}</Title>
                             <Text type="secondary">建案管理</Text>

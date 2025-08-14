@@ -36,13 +36,16 @@ export async function GET(
       id: customer.id,
       name: customer.name,
       house_no: customer.houseNo,
-      contract_no: customer.contractNo,
       purchase_date: customer.purchaseDate,
-      total_price: customer.totalPrice,
-      payment_status: customer.paymentStatus,
-      loan_status: customer.loanStatus,
-      remark: customer.remark,
+      id_card: customer.idCard,
+      is_corporate: customer.isCorporate,
+      email: customer.email,
+      phone: customer.phone,
+      age: customer.age,
+      occupation: customer.occupation,
+      registered_address: customer.registeredAddress,
       mailing_address: customer.mailingAddress,
+      remark: customer.remark,
       rating: customer.rating,
       project_id: customer.projectId,
       created_at: customer.createdAt,
@@ -70,13 +73,16 @@ export async function PUT(
     const {
       name,
       houseNo,
-      contractNo,
       purchaseDate,
-      totalPrice,
-      paymentStatus,
-      loanStatus,
-      remark,
+      idCard,
+      isCorporate,
+      email,
+      phone,
+      age,
+      occupation,
+      registeredAddress,
       mailingAddress,
+      remark,
       rating
     } = body
     
@@ -101,18 +107,18 @@ export async function PUT(
       return NextResponse.json({ error: '已購客戶不存在' }, { status: 404 })
     }
     
-    // 檢查合約號是否與其他記錄衝突（如果提供且有變更）
-    if (contractNo && contractNo !== existingCustomer.contractNo) {
-      const contractExists = await prisma.purchasedCustomer.findFirst({
+    // 檢查房號是否與其他記錄衝突（如果提供且有變更）
+    if (houseNo && houseNo !== existingCustomer.houseNo) {
+      const houseExists = await prisma.purchasedCustomer.findFirst({
         where: {
           projectId,
-          contractNo,
+          houseNo,
           id: { not: customerId }
         }
       })
       
-      if (contractExists) {
-        return NextResponse.json({ error: '該合約號已存在' }, { status: 400 })
+      if (houseExists) {
+        return NextResponse.json({ error: '該房號已存在' }, { status: 400 })
       }
     }
     
@@ -122,13 +128,16 @@ export async function PUT(
       data: {
         name: name || existingCustomer.name,
         houseNo: houseNo || existingCustomer.houseNo,
-        contractNo: contractNo !== undefined ? contractNo : existingCustomer.contractNo,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : existingCustomer.purchaseDate,
-        totalPrice: totalPrice !== undefined ? (totalPrice ? parseFloat(totalPrice) : null) : existingCustomer.totalPrice,
-        paymentStatus: paymentStatus || existingCustomer.paymentStatus,
-        loanStatus: loanStatus || existingCustomer.loanStatus,
-        remark: remark !== undefined ? remark : existingCustomer.remark,
+        idCard: idCard !== undefined ? idCard : existingCustomer.idCard,
+        isCorporate: isCorporate !== undefined ? isCorporate : existingCustomer.isCorporate,
+        email: email !== undefined ? email : existingCustomer.email,
+        phone: phone !== undefined ? phone : existingCustomer.phone,
+        age: age !== undefined ? age : existingCustomer.age,
+        occupation: occupation !== undefined ? occupation : existingCustomer.occupation,
+        registeredAddress: registeredAddress !== undefined ? registeredAddress : existingCustomer.registeredAddress,
         mailingAddress: mailingAddress !== undefined ? mailingAddress : existingCustomer.mailingAddress,
+        remark: remark !== undefined ? remark : existingCustomer.remark,
         rating: rating || existingCustomer.rating
       }
     })
@@ -138,13 +147,16 @@ export async function PUT(
       id: updatedCustomer.id,
       name: updatedCustomer.name,
       house_no: updatedCustomer.houseNo,
-      contract_no: updatedCustomer.contractNo,
       purchase_date: updatedCustomer.purchaseDate,
-      total_price: updatedCustomer.totalPrice,
-      payment_status: updatedCustomer.paymentStatus,
-      loan_status: updatedCustomer.loanStatus,
-      remark: updatedCustomer.remark,
+      id_card: updatedCustomer.idCard,
+      is_corporate: updatedCustomer.isCorporate,
+      email: updatedCustomer.email,
+      phone: updatedCustomer.phone,
+      age: updatedCustomer.age,
+      occupation: updatedCustomer.occupation,
+      registered_address: updatedCustomer.registeredAddress,
       mailing_address: updatedCustomer.mailingAddress,
+      remark: updatedCustomer.remark,
       rating: updatedCustomer.rating,
       project_id: updatedCustomer.projectId,
       created_at: updatedCustomer.createdAt,

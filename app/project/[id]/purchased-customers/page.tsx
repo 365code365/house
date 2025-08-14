@@ -993,7 +993,7 @@ export default function PurchasedCustomersPage() {
                                     <strong>房型：</strong>{viewingItem.houseType}
                                 </div>
                                 <div>
-                                    <strong>購買日期：</strong>{viewingItem.purchaseDate}
+                                    <strong>購買日期：</strong>{viewingItem.purchaseDate ? new Date(viewingItem.purchaseDate).toLocaleDateString() : '未設定'}
                                 </div>
                                 <div>
                                     <strong>客戶評級：</strong>
@@ -1071,7 +1071,7 @@ export default function PurchasedCustomersPage() {
                                     </Tag>
                                 </div>
                                 <div>
-                                    <strong>交屋日期：</strong>{viewingItem.handoverDate || '未安排'}
+                                    <strong>交屋日期：</strong>{viewingItem.handoverDate ? new Date(viewingItem.handoverDate).toLocaleDateString() : '未安排'}
                                 </div>
                                 {viewingItem.salesPersonId && (
                                     <div>
@@ -1087,13 +1087,13 @@ export default function PurchasedCustomersPage() {
                         <Card title="追蹤記錄">
                             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                                 <div>
-                                    <strong>建立時間：</strong>{viewingItem.createdAt}
+                                    <strong>建立時間：</strong>{viewingItem.createdAt ? new Date(viewingItem.createdAt).toLocaleDateString() : '未知'}
                                 </div>
                                 <div>
-                                    <strong>最後聯絡：</strong>{viewingItem.lastContactDate || '無記錄'}
+                                    <strong>最後聯絡：</strong>{viewingItem.lastContactDate ? new Date(viewingItem.lastContactDate).toLocaleDateString() : '無記錄'}
                                 </div>
                                 <div>
-                                    <strong>下次追蹤：</strong>{viewingItem.nextFollowUpDate || '未安排'}
+                                    <strong>下次追蹤：</strong>{viewingItem.nextFollowUpDate ? new Date(viewingItem.nextFollowUpDate).toLocaleDateString() : '未安排'}
                                 </div>
                             </div>
                             {viewingItem.remark && (
