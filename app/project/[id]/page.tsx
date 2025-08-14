@@ -84,7 +84,7 @@ const quickNavItems = [
     title: '已購客名單',
     description: '查看已購買客戶詳細資訊',
     icon: UserOutlined,
-    href: '/customers',
+    href: '/purchased-customers',
     color: '#2f54eb'
   },
   {
@@ -98,14 +98,14 @@ const quickNavItems = [
     title: '訪客問卷',
     description: '收集與分析訪客意見回饋',
     icon: FileTextOutlined,
-    href: '/questionnaire',
+    href: '/visitor-questionnaire',
     color: '#13c2c2'
   },
   {
     title: '退戶分析表',
     description: '分析退戶原因與趨勢',
     icon: FallOutlined,
-    href: '/withdrawal',
+    href: '/handover',
     color: '#faad14'
   },
   {
@@ -114,6 +114,34 @@ const quickNavItems = [
     icon: DollarOutlined,
     href: '/financial',
     color: '#389e0d'
+  },
+  {
+    title: '預算管理',
+    description: '管理建案預算與支出',
+    icon: BuildOutlined,
+    href: '/budget',
+    color: '#722ed1'
+  },
+  {
+    title: '佣金管理',
+    description: '管理銷售佣金與提成',
+    icon: RiseOutlined,
+    href: '/commission',
+    color: '#52c41a'
+  },
+  {
+    title: '定金管理',
+    description: '管理客戶定金與付款',
+    icon: DollarOutlined,
+    href: '/deposit',
+    color: '#fa8c16'
+  },
+  {
+    title: '費用管理',
+    description: '管理建案相關費用',
+    icon: FileTextOutlined,
+    href: '/expenses',
+    color: '#13c2c2'
   }
 ]
 
