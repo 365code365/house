@@ -5,18 +5,9 @@ import { Button, Upload, message, Modal, Space, Dropdown } from 'antd'
 import { UploadOutlined, DownloadOutlined, FileExcelOutlined, FilePdfOutlined, DownOutlined } from '@ant-design/icons'
 import type { UploadProps, MenuProps } from 'antd'
 import * as XLSX from 'xlsx'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
-import PDFTemplate, { PDFTemplateRef } from './PDFTemplate'
+import PDFPreviewModal from './PDFPreviewModal'
 import PDFTemplateConfig, { PDFConfig, defaultConfig } from './PDFTemplateConfig'
 import { SalesControlData } from './SalesControlTable'
-
-// 擴展jsPDF類型以支持autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: typeof autoTable
-  }
-}
 
 interface ImportExportActionsProps {
   data: SalesControlData[]
@@ -32,6 +23,7 @@ const ImportExportActions: React.FC<ImportExportActionsProps> = ({
   const [importing, setImporting] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showPDFConfig, setShowPDFConfig] = useState(false)
+  const [showPDFPreview, setShowPDFPreview] = useState(false)
   const [pdfConfig, setPdfConfig] = useState<PDFConfig>(defaultConfig)
 
   // Excel導入處理
@@ -152,215 +144,6 @@ const ImportExportActions: React.FC<ImportExportActionsProps> = ({
     }
   }
 
-  // PDF導出
-  const exportToPDF = async (config: PDFConfig = pdfConfig) => {
-    setExporting(true)
-    try {
-      console.log('開始PDF導出，數據條數:', data.length)
-      
-      // Create a temporary container for the PDF template
-      const tempContainer = document.createElement('div')
-      tempContainer.style.position = 'absolute'
-      tempContainer.style.left = '-9999px'
-      tempContainer.style.top = '-9999px'
-      tempContainer.style.width = '1200px'
-      tempContainer.style.height = 'auto'
-      tempContainer.style.minHeight = '800px'
-      tempContainer.style.backgroundColor = '#ffffff'
-      tempContainer.style.padding = '20px'
-      tempContainer.style.boxSizing = 'border-box'
-      tempContainer.style.overflow = 'visible'
-      tempContainer.style.display = 'block'
-      tempContainer.style.visibility = 'visible'
-      tempContainer.style.opacity = '1'
-      tempContainer.style.zIndex = '9999'
-      tempContainer.style.fontFamily = '"Microsoft JhengHei", "PingFang TC", "Helvetica Neue", Arial, sans-serif'
-      tempContainer.style.fontSize = '14px'
-      tempContainer.style.lineHeight = '1.5'
-      tempContainer.style.color = '#000000'
-      
-      // 添加全局樣式到容器
-      const globalStyle = document.createElement('style')
-      globalStyle.textContent = `
-        .pdf-temp-container * {
-          box-sizing: border-box;
-          font-family: "Microsoft JhengHei", "PingFang TC", "Helvetica Neue", Arial, sans-serif;
-        }
-        .pdf-temp-container table {
-          border-collapse: collapse;
-          width: 100%;
-          margin: 10px 0;
-        }
-        .pdf-temp-container th,
-        .pdf-temp-container td {
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: left;
-          vertical-align: top;
-        }
-        .pdf-temp-container th {
-          background-color: #f5f5f5;
-          font-weight: bold;
-        }
-        .pdf-temp-container .pdf-header {
-          text-align: center;
-          margin-bottom: 20px;
-        }
-        .pdf-temp-container .pdf-stats {
-          display: flex;
-          justify-content: space-around;
-          margin: 20px 0;
-        }
-      `
-      tempContainer.className = 'pdf-temp-container'
-      document.head.appendChild(globalStyle)
-      document.body.appendChild(tempContainer)
-
-      // Create PDF template component
-      const { createRoot } = await import('react-dom/client')
-      const root = createRoot(tempContainer)
-      
-      // Render the PDF template
-      let templateRef: PDFTemplateRef | null = null
-      let renderComplete = false
-      
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          if (!renderComplete) {
-            reject(new Error('PDF模板渲染超時'))
-          }
-        }, 10000) // 10秒超時
-        
-        root.render(
-          <PDFTemplate 
-            ref={(ref) => {
-              console.log('PDFTemplate ref回調:', ref ? '已設置' : '為空')
-              templateRef = ref
-              if (ref) {
-                // 等待更長時間確保組件完全渲染
-                setTimeout(() => {
-                  const element = ref.getElement()
-                  console.log('模板元素:', element ? '已獲取' : '為空')
-                  if (element) {
-                    renderComplete = true
-                    clearTimeout(timeout)
-                    resolve()
-                  }
-                }, 1000) // 增加到1秒等待時間
-              }
-            }}
-            data={data}
-            config={config}
-          />
-        )
-      })
-
-      const templateElement = templateRef?.getElement()
-      if (!templateElement) {
-        throw new Error('無法獲取PDF模板元素')
-      }
-      
-      console.log('模板元素尺寸:', {
-        width: templateElement.scrollWidth,
-        height: templateElement.scrollHeight,
-        offsetWidth: templateElement.offsetWidth,
-        offsetHeight: templateElement.offsetHeight
-      })
-
-      // 等待一段時間確保所有樣式和內容完全加載
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      console.log('開始html2canvas轉換')
-      
-      // Convert HTML to canvas
-      const canvas = await html2canvas(templateElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: templateElement.scrollWidth,
-        height: templateElement.scrollHeight,
-        foreignObjectRendering: true,
-        logging: true, // 啟用調試日誌
-        removeContainer: false,
-        imageTimeout: 15000,
-        onclone: (clonedDoc, element) => {
-          console.log('html2canvas onclone回調')
-          // 確保中文字體在克隆的文檔中正確加載
-          const style = clonedDoc.createElement('style')
-          style.textContent = `
-            * {
-              font-family: "Microsoft JhengHei", "PingFang TC", "Helvetica Neue", Arial, sans-serif !important;
-              box-sizing: border-box;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 8px;
-              text-align: left;
-            }
-          `
-          clonedDoc.head.appendChild(style)
-          
-          // 確保元素可見
-          if (element) {
-            element.style.display = 'block'
-            element.style.visibility = 'visible'
-            element.style.opacity = '1'
-          }
-        }
-      })
-      
-      console.log('html2canvas轉換完成，canvas尺寸:', {
-        width: canvas.width,
-        height: canvas.height
-      })
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({
-        orientation: config.pageOrientation || 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      })
-
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-      const imgX = (pdfWidth - imgWidth * ratio) / 2
-      const imgY = 0
-
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio)
-      
-      // Clean up
-      root.unmount()
-      document.body.removeChild(tempContainer)
-      
-      // 清理添加的全局樣式
-      const addedStyles = document.querySelectorAll('style')
-      addedStyles.forEach(style => {
-        if (style.textContent?.includes('.pdf-temp-container')) {
-          document.head.removeChild(style)
-        }
-      })
-
-      // Save the PDF
-      pdf.save(`sales-control-${new Date().toISOString().split('T')[0]}.pdf`)
-      
-      message.success('PDF導出成功')
-    } catch (error) {
-      console.error('PDF導出錯誤:', error)
-      message.error('PDF導出失敗')
-    } finally {
-      setExporting(false)
-    }
-  }
-
   // 下載模板
   const downloadTemplate = () => {
     const templateData = [{
@@ -442,15 +225,24 @@ const ImportExportActions: React.FC<ImportExportActionsProps> = ({
         下載模板
       </Button>
       
+      {/* PDF配置模态框 */}
       <PDFTemplateConfig
         visible={showPDFConfig}
         onCancel={() => setShowPDFConfig(false)}
         onConfirm={(config) => {
           setPdfConfig(config)
           setShowPDFConfig(false)
-          exportToPDF(config)
+          setShowPDFPreview(true) // 显示预览
         }}
         initialConfig={pdfConfig}
+      />
+      
+      {/* PDF预览模态框 */}
+      <PDFPreviewModal
+        visible={showPDFPreview}
+        onCancel={() => setShowPDFPreview(false)}
+        data={data}
+        config={pdfConfig}
       />
     </Space>
   )

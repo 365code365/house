@@ -1,0 +1,9 @@
+{
+  "name": "pdf-test",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^5.0.2"
+  }
+}

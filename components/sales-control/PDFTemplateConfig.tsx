@@ -1,8 +1,8 @@
 "use client"
 
-import React from 'react'
-import { Modal, Form, Input, Switch, Select, Upload, Button, Space, ColorPicker } from 'antd'
-import { UploadOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Modal, Form, Input, Switch, ColorPicker, Select, Upload, Button, Space, Divider, message } from 'antd'
+import { UploadOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd/es/upload/interface'
 
 interface PDFTemplateConfigProps {
@@ -53,7 +53,7 @@ const PDFTemplateConfig: React.FC<PDFTemplateConfigProps> = ({
   initialConfig = defaultConfig
 }) => {
   const [form] = Form.useForm()
-  const [logoFile, setLogoFile] = React.useState<UploadFile | null>(null)
+  const [logoFile, setLogoFile] = useState<UploadFile | null>(null)
 
   React.useEffect(() => {
     if (visible) {
@@ -82,7 +82,34 @@ const PDFTemplateConfig: React.FC<PDFTemplateConfigProps> = ({
   const resetToDefault = () => {
     form.setFieldsValue(defaultConfig)
     setLogoFile(null)
+    message.success('已重置為默認配置')
   }
+
+  const quickPresets = [
+    {
+      name: '默認樣式',
+      config: defaultConfig
+    },
+    {
+      name: '商務風格',
+      config: {
+        ...defaultConfig,
+        headerColor: '#722ed1',
+        accentColor: '#722ed1',
+        tableStyle: 'bordered'
+      }
+    },
+    {
+      name: '簡潔風格',
+      config: {
+        ...defaultConfig,
+        headerColor: '#13c2c2',
+        accentColor: '#13c2c2',
+        tableStyle: 'simple',
+        fontSize: 'small'
+      }
+    }
+  ]
 
   return (
     <Modal
@@ -90,7 +117,7 @@ const PDFTemplateConfig: React.FC<PDFTemplateConfigProps> = ({
       open={visible}
       onCancel={onCancel}
       onOk={handleOk}
-      width={600}
+      width={800}
       okText="確認"
       cancelText="取消"
     >
@@ -98,147 +125,169 @@ const PDFTemplateConfig: React.FC<PDFTemplateConfigProps> = ({
         form={form}
         layout="vertical"
         initialValues={initialConfig}
+        style={{ marginTop: 20 }}
       >
-        <Form.Item
-          label="報表標題"
-          name="title"
-          rules={[{ required: true, message: '請輸入報表標題' }]}
-        >
-          <Input placeholder="請輸入報表標題" />
-        </Form.Item>
+        {/* 快速预设 */}
+        <div style={{ marginBottom: 20 }}>
+          <h4>快速预设</h4>
+          <Space wrap>
+            {quickPresets.map((preset, index) => (
+              <Button
+                key={index}
+                size="small"
+                onClick={() => {
+                  form.setFieldsValue(preset.config)
+                  message.success(`已應用${preset.name}`)
+                }}
+              >
+                {preset.name}
+              </Button>
+            ))}
+          </Space>
+        </div>
 
-        <Form.Item
-          label="副標題"
-          name="subtitle"
-        >
-          <Input placeholder="請輸入副標題" />
-        </Form.Item>
+        <Divider />
 
-        <Form.Item
-          label="公司名稱"
-          name="companyName"
-          rules={[{ required: true, message: '請輸入公司名稱' }]}
-        >
-          <Input placeholder="請輸入公司名稱" />
-        </Form.Item>
+        {/* 基本信息 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <Form.Item
+            name="title"
+            label="報表標題"
+            rules={[{ required: true, message: '請輸入報表標題' }]}
+          >
+            <Input placeholder="銷控管理報表" />
+          </Form.Item>
 
-        <Form.Item
-          label="顯示Logo"
-          name="showLogo"
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
+          <Form.Item
+            name="subtitle"
+            label="副標題"
+          >
+            <Input placeholder="房地產銷售控制數據統計" />
+          </Form.Item>
 
-        <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) => 
-            prevValues.showLogo !== currentValues.showLogo
-          }
-        >
-          {({ getFieldValue }) => {
-            return getFieldValue('showLogo') ? (
-              <Form.Item label="公司Logo">
-                <Upload
-                  accept="image/*"
-                  maxCount={1}
-                  beforeUpload={handleLogoUpload}
-                  fileList={logoFile ? [logoFile] : []}
-                >
-                  <Button icon={<UploadOutlined />}>選擇Logo圖片</Button>
-                </Upload>
-              </Form.Item>
-            ) : null
-          }}
-        </Form.Item>
+          <Form.Item
+            name="companyName"
+            label="公司名稱"
+            rules={[{ required: true, message: '請輸入公司名稱' }]}
+          >
+            <Input placeholder="房地產銷控管理系統" />
+          </Form.Item>
 
-        <Form.Item
-          label="頁面方向"
-          name="pageOrientation"
-        >
-          <Select>
-            <Select.Option value="landscape">橫向</Select.Option>
-            <Select.Option value="portrait">縱向</Select.Option>
-          </Select>
-        </Form.Item>
+          <Form.Item
+            name="pageOrientation"
+            label="頁面方向"
+          >
+            <Select>
+              <Select.Option value="landscape">橫向</Select.Option>
+              <Select.Option value="portrait">縱向</Select.Option>
+            </Select>
+          </Form.Item>
+        </div>
 
-        <Form.Item
-          label="字體大小"
-          name="fontSize"
-        >
-          <Select>
-            <Select.Option value="small">小</Select.Option>
-            <Select.Option value="medium">中</Select.Option>
-            <Select.Option value="large">大</Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="表格樣式"
-          name="tableStyle"
-        >
-          <Select>
-            <Select.Option value="simple">簡潔</Select.Option>
-            <Select.Option value="striped">條紋</Select.Option>
-            <Select.Option value="bordered">邊框</Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="主題色彩"
-          name="headerColor"
-        >
-          <ColorPicker showText />
-        </Form.Item>
-
-        <Form.Item
-          label="強調色彩"
-          name="accentColor"
-        >
-          <ColorPicker showText />
-        </Form.Item>
-
-        <Form.Item
-          label="顯示日期"
-          name="showDate"
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
-
-        <Form.Item
-          label="顯示頁碼"
-          name="showPageNumber"
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
-
-        <Form.Item
-          label="顯示統計摘要"
-          name="showSummary"
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
-
-        <Form.Item
-          label="日期格式"
-          name="dateFormat"
-        >
-          <Select>
-            <Select.Option value="YYYY-MM-DD">YYYY-MM-DD</Select.Option>
-            <Select.Option value="YYYY/MM/DD">YYYY/MM/DD</Select.Option>
-            <Select.Option value="DD/MM/YYYY">DD/MM/YYYY</Select.Option>
-            <Select.Option value="MM/DD/YYYY">MM/DD/YYYY</Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item>
+        {/* Logo设置 */}
+        <Form.Item label="Logo設置">
           <Space>
-            <Button onClick={resetToDefault}>恢復默認</Button>
+            <Switch
+              checked={form.getFieldValue('showLogo')}
+              onChange={(checked) => form.setFieldsValue({ showLogo: checked })}
+            />
+            <span>顯示Logo</span>
+            {form.getFieldValue('showLogo') && (
+              <Upload
+                accept="image/*"
+                beforeUpload={() => false}
+                onChange={({ fileList }) => {
+                  if (fileList.length > 0) {
+                    handleLogoUpload(fileList[0])
+                  }
+                }}
+                maxCount={1}
+              >
+                <Button icon={<UploadOutlined />} size="small">
+                  上傳Logo
+                </Button>
+              </Upload>
+            )}
           </Space>
         </Form.Item>
+
+        {/* 显示选项 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+          <Form.Item
+            name="showDate"
+            label="顯示日期"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+
+          <Form.Item
+            name="showPageNumber"
+            label="顯示頁碼"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+
+          <Form.Item
+            name="showSummary"
+            label="顯示統計摘要"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+        </div>
+
+        {/* 样式设置 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <Form.Item
+            name="headerColor"
+            label="標題顏色"
+          >
+            <ColorPicker />
+          </Form.Item>
+
+          <Form.Item
+            name="accentColor"
+            label="強調顏色"
+          >
+            <ColorPicker />
+          </Form.Item>
+
+          <Form.Item
+            name="fontSize"
+            label="字體大小"
+          >
+            <Select>
+              <Select.Option value="small">小</Select.Option>
+              <Select.Option value="medium">中</Select.Option>
+              <Select.Option value="large">大</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="tableStyle"
+            label="表格樣式"
+          >
+            <Select>
+              <Select.Option value="simple">簡潔</Select.Option>
+              <Select.Option value="striped">條紋</Select.Option>
+              <Select.Option value="bordered">邊框</Select.Option>
+            </Select>
+          </Form.Item>
+        </div>
+
+        {/* 操作按钮 */}
+        <div style={{ textAlign: 'center', marginTop: 30 }}>
+          <Space>
+            <Button onClick={resetToDefault}>
+              重置為默認
+            </Button>
+            <Button type="primary" onClick={handleOk}>
+              預覽並導出
+            </Button>
+          </Space>
+        </div>
       </Form>
     </Modal>
   )
@@ -246,4 +295,3 @@ const PDFTemplateConfig: React.FC<PDFTemplateConfigProps> = ({
 
 export default PDFTemplateConfig
 export { defaultConfig }
-export type { PDFTemplateConfigProps }
