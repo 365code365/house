@@ -44,7 +44,7 @@ export default function ParkingPage() {
   })
   const [formData, setFormData] = useState<ParkingFormData>({
     parkingNo: '',
-    type: '平面',
+    type: 'FLAT',
     location: '',
     price: 0,
     status: 'available'
@@ -118,7 +118,7 @@ export default function ParkingPage() {
     'available': 'AVAILABLE',
     'reserved': 'DEPOSIT',
     'sold': 'SOLD',
-    'unavailable': 'UNAVAILABLE'
+    'not_sale': 'NOT_SALE'
   }
 
   // 處理表單提交
@@ -168,7 +168,7 @@ export default function ParkingPage() {
   const resetForm = () => {
     setFormData({
       parkingNo: '',
-      type: '平面',
+      type: 'FLAT',
       location: '',
       price: 0,
       status: 'available'
@@ -180,7 +180,7 @@ export default function ParkingPage() {
     'AVAILABLE': 'available',
     'DEPOSIT': 'reserved',
     'SOLD': 'sold',
-    'UNAVAILABLE': 'unavailable'
+    'NOT_SALE': 'not_sale'
   }
 
   // 處理編輯
@@ -188,7 +188,7 @@ export default function ParkingPage() {
     setEditingSpace(space)
     setFormData({
       parkingNo: space.parkingNo,
-      type: space.type || '平面',
+      type: space.type || 'FLAT',
       location: space.location || '',
       price: Number(space.price),
       status: reverseStatusMapping[space.salesStatus as keyof typeof reverseStatusMapping] || (space.salesStatus ? space.salesStatus.toLowerCase() : 'available'),
@@ -225,7 +225,7 @@ export default function ParkingPage() {
     AVAILABLE: 'bg-green-100 text-green-800',
     DEPOSIT: 'bg-yellow-100 text-yellow-800',
     SOLD: 'bg-red-100 text-red-800',
-    UNAVAILABLE: 'bg-gray-100 text-gray-800'
+    NOT_SALE: 'bg-gray-100 text-gray-800'
   }
 
   // 狀態標籤映射（後端返回大寫狀態值）
@@ -233,19 +233,19 @@ export default function ParkingPage() {
     AVAILABLE: '可售',
     DEPOSIT: '預約',
     SOLD: '已售',
-    UNAVAILABLE: '不可售'
+    NOT_SALE: '不可售'
   }
 
   // 類型標籤映射（後端返回英文枚舉值）
   const typeLabels = {
     FLAT: '平面車位',
-    MECHANICAL_UPPER: '機械上層',
-    MECHANICAL_MIDDLE: '機械中層',
-    MECHANICAL_LOWER: '機械下層',
-    MECHANICAL_SLIDING: '機械平移',
+    MECHANICAL_TOP: '機械上層',
+    MECHANICAL_MID: '機械中層',
+    MECHANICAL_BOT: '機械下層',
+    MECHANICAL_MOVE: '機械移動',
     MOTORCYCLE: '機車位',
     BICYCLE: '腳踏車位',
-    SELF_BUILT: '自設車位',
+    SELF_BUILT: '自建車位',
     LEGAL: '法定車位'
   }
 
@@ -306,15 +306,15 @@ export default function ParkingPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="平面">平面車位</SelectItem>
-                    <SelectItem value="機械上層">機械上層</SelectItem>
-                    <SelectItem value="機械中層">機械中層</SelectItem>
-                    <SelectItem value="機械下層">機械下層</SelectItem>
-                    <SelectItem value="機械平移">機械平移</SelectItem>
-                    <SelectItem value="機車位">機車位</SelectItem>
-                    <SelectItem value="腳踏車位">腳踏車位</SelectItem>
-                    <SelectItem value="自設">自設車位</SelectItem>
-                    <SelectItem value="法定">法定車位</SelectItem>
+                    <SelectItem value="FLAT">平面車位</SelectItem>
+                    <SelectItem value="MECHANICAL_TOP">機械上層</SelectItem>
+                    <SelectItem value="MECHANICAL_MID">機械中層</SelectItem>
+                    <SelectItem value="MECHANICAL_BOT">機械下層</SelectItem>
+                    <SelectItem value="MECHANICAL_MOVE">機械移動</SelectItem>
+                    <SelectItem value="MOTORCYCLE">機車位</SelectItem>
+                    <SelectItem value="BICYCLE">腳踏車位</SelectItem>
+                    <SelectItem value="SELF_BUILT">自建車位</SelectItem>
+                    <SelectItem value="LEGAL">法定車位</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -351,7 +351,7 @@ export default function ParkingPage() {
                     <SelectItem value="available">可售</SelectItem>
                     <SelectItem value="reserved">預約</SelectItem>
                     <SelectItem value="sold">已售</SelectItem>
-                    <SelectItem value="unavailable">不可售</SelectItem>
+                    <SelectItem value="not_sale">不可售</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -500,7 +500,7 @@ export default function ParkingPage() {
                   <SelectItem value="available">可售</SelectItem>
                   <SelectItem value="reserved">預約</SelectItem>
                   <SelectItem value="sold">已售</SelectItem>
-                  <SelectItem value="unavailable">不可售</SelectItem>
+                  <SelectItem value="not_sale">不可售</SelectItem>
                 </SelectContent>
               </Select>
             </div>
