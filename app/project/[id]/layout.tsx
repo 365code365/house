@@ -74,7 +74,7 @@ const getMenuItems = (projectId: string): MenuItem[] => [
     {
         key: 'customers',
         icon: <TeamOutlined/>,
-        label: <Link href={`/project/${projectId}/customers`}>已購客名單</Link>,
+        label: <Link href={`/project/${projectId}/purchased-customers`}>已購客名單</Link>,
     },
     {
         key: 'sales-personnel',
