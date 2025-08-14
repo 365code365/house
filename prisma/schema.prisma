@@ -7,450 +7,526 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// 公司信息模型
+/// 存储系统使用公司的基本信息
 model Company {
-  id        Int     @id @default(autoincrement())
-  name      String  @db.VarChar(100)
-  accountId String  @map("account_id") @db.VarChar(50)
-  password  String  @db.VarChar(100)
-  address   String? @db.Text
-  taxId     String? @map("tax_id") @db.VarChar(20)
-  phone     String? @db.VarChar(20)
+  id        Int     @id @default(autoincrement()) /// 公司ID，主键，自增
+  name      String  @db.VarChar(100) /// 公司名称
+  accountId String  @map("account_id") @db.VarChar(50) /// 公司账号ID
+  password  String  @db.VarChar(100) /// 公司登录密码
+  address   String? @db.Text /// 公司地址（可选）
+  taxId     String? @map("tax_id") @db.VarChar(20) /// 公司税号（可选）
+  phone     String? @map("phone") @db.VarChar(20) /// 公司联系电话（可选）
 
   @@map("company")
 }
 
+/// 房地产项目模型
+/// 存储每个房地产项目的基本信息
 model Project {
-  id                    Int                    @id @default(autoincrement())
-  name                  String                 @unique(map: "uk_name") @db.VarChar(100)
-  mainImage             String?                @map("main_image") @db.VarChar(255)
-  createdAt             DateTime               @default(now()) @map("created_at")
-  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at")
-  budgetPlans           BudgetPlan[]
-  commissionLists       CommissionList[]
-  customerAppointments  CustomerAppointment[]
-  depositManagements    DepositManagement[]
-  expenseManagements    ExpenseManagement[]
-  handoverManagements   HandoverManagement[]
-  parkingSpaces         ParkingSpace[]
-  purchasedCustomers    PurchasedCustomer[]
-  salesControl          SalesControl[]
-  visitorQuestionnaires VisitorQuestionnaire[]
-  withdrawalRecords     WithdrawalRecord[]
+  id        Int      @id @default(autoincrement()) /// 项目ID，主键，自增
+  name      String   @unique(map: "uk_name") @db.VarChar(100) /// 项目名称，唯一
+  mainImage String?  @map("main_image") @db.VarChar(255) /// 项目主图片URL（可选）
+  createdAt DateTime @default(now()) @map("created_at") /// 项目创建时间
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") /// 项目最后更新时间
+
+  // 关联关系
+  budgetPlans           BudgetPlan[] /// 预算计划列表
+  commissionLists       CommissionList[] /// 佣金列表
+  customerAppointments  CustomerAppointment[] /// 客户预约列表
+  depositManagements    DepositManagement[] /// 订金管理列表
+  expenseManagements    ExpenseManagement[] /// 费用管理列表
+  handoverManagements   HandoverManagement[] /// 交房管理列表
+  parkingSpaces         ParkingSpace[] /// 停车位列表
+  purchasedCustomers    PurchasedCustomer[] /// 已购客户列表
+  salesControl          SalesControl[] /// 销控数据列表
+  visitorQuestionnaires VisitorQuestionnaire[] /// 访客问卷列表
+  withdrawalRecords     WithdrawalRecord[] /// 退户记录列表
 
   @@map("project")
 }
 
+/// 销售人员模型
+/// 存储销售人员的基本信息和权限
 model SalesPersonnel {
-  id                   Int                   @id @default(autoincrement())
-  employeeNo           String                @unique(map: "uk_employee_no") @map("employee_no") @db.VarChar(50)
-  name                 String                @db.VarChar(50)
-  email                String                @unique(map: "uk_email") @db.VarChar(100)
-  password             String                @db.VarChar(100)
-  phone                String?               @db.VarChar(20)
-  projectIds           String?               @map("project_ids") @db.VarChar(255)
-  remark               String?               @db.Text
-  createdAt            DateTime              @default(now()) @map("created_at")
-  updatedAt            DateTime              @default(now()) @updatedAt @map("updated_at")
-  commissionLists      CommissionList[]
-  customerAppointments CustomerAppointment[]
-  salesControl         SalesControl[]
+  id         Int      @id @default(autoincrement()) /// 销售人员ID，主键，自增
+  employeeNo String   @unique(map: "uk_employee_no") @map("employee_no") @db.VarChar(50) /// 员工编号，唯一
+  name       String   @db.VarChar(50) /// 销售人员姓名
+  email      String   @unique(map: "uk_email") @db.VarChar(100) /// 电子邮箱，唯一
+  password   String   @db.VarChar(100) /// 登录密码
+  phone      String?  @map("phone") @db.VarChar(20) /// 联系电话（可选）
+  projectIds String?  @map("project_ids") @db.VarChar(255) /// 可访问的项目ID列表，逗号分隔（可选）
+  remark     String?  @db.Text /// 备注信息（可选）
+  createdAt  DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
+
+  // 关联关系
+  commissionLists      CommissionList[] /// 佣金记录列表
+  customerAppointments CustomerAppointment[] /// 客户预约列表
+  salesControl         SalesControl[] /// 销控记录列表
 
   @@map("sales_personnel")
 }
 
+/// 销控管理模型
+/// 存储房屋销售控制的核心数据
 model SalesControl {
-  id                  Int                     @id @default(autoincrement())
-  houseNo             String                  @map("house_no") @db.VarChar(50)
-  building            String                  @db.VarChar(10)
-  floor               Int
-  unit                String                  @db.VarChar(10)
-  area                Decimal?                @db.Decimal(10, 2)
-  unitPrice           Decimal?                @map("unit_price") @db.Decimal(15, 2)
-  houseTotal          Decimal?                @map("house_total") @db.Decimal(15, 2)
-  totalWithParking    Decimal?                @map("total_with_parking") @db.Decimal(15, 2)
-  salesStatus         SalesControlSalesStatus @map("sales_status")
-  salesDate           DateTime?               @map("sales_date") @db.Date
-  depositDate         DateTime?               @map("deposit_date") @db.Date
-  signDate            DateTime?               @map("sign_date") @db.Date
-  buyer               String?                 @db.VarChar(255)
-  salesId             String?                 @map("sales_id") @db.VarChar(50)
-  parkingIds          String?                 @map("parking_ids") @db.VarChar(255)
-  customChange        Boolean?                @map("custom_change")
-  customChangeContent String?                 @map("custom_change_content") @db.Text
-  mediaSource         String?                 @map("media_source") @db.VarChar(100)
-  introducer          String?                 @db.VarChar(100)
-  notes               String?                 @db.Text
-  basePrice           Decimal?                @map("base_price") @db.Decimal(15, 2)
-  premiumRate         Decimal?                @map("premium_rate") @db.Decimal(10, 2)
-  projectId           Int                     @map("project_id")
-  createdAt           DateTime                @default(now()) @map("created_at")
-  updatedAt           DateTime                @default(now()) @updatedAt @map("updated_at")
-  project             Project                 @relation(fields: [projectId], references: [id])
-  salesPersonnel      SalesPersonnel?         @relation(fields: [salesId], references: [employeeNo])
+  id                  Int                     @id @default(autoincrement()) /// 销控记录ID，主键，自增
+  houseNo             String                  @map("house_no") @db.VarChar(50) /// 房屋编号
+  building            String                  @db.VarChar(10) /// 楼栋号
+  floor               Int /// 楼层号
+  unit                String                  @db.VarChar(10) /// 单元号
+  area                Decimal?                @db.Decimal(10, 2) /// 房屋面积（平方米，可选）
+  unitPrice           Decimal?                @map("unit_price") @db.Decimal(15, 2) /// 单价（元/平方米，可选）
+  houseTotal          Decimal?                @map("house_total") @db.Decimal(15, 2) /// 房屋总价（元，可选）
+  totalWithParking    Decimal?                @map("total_with_parking") @db.Decimal(15, 2) /// 含停车位总价（元，可选）
+  salesStatus         SalesControlSalesStatus @map("sales_status") /// 销售状态
+  salesDate           DateTime?               @map("sales_date") @db.Date /// 销售日期（可选）
+  depositDate         DateTime?               @map("deposit_date") @db.Date /// 订金日期（可选）
+  signDate            DateTime?               @map("sign_date") @db.Date /// 签约日期（可选）
+  buyer               String?                 @db.VarChar(255) /// 买家姓名（可选）
+  salesId             String?                 @map("sales_id") @db.VarChar(50) /// 销售人员ID（可选）
+  parkingIds          String?                 @map("parking_ids") @db.VarChar(255) /// 关联停车位ID列表，逗号分隔（可选）
+  customChange        Boolean?                @map("custom_change") /// 是否有客户变更（可选）
+  customChangeContent String?                 @map("custom_change_content") @db.Text /// 客户变更内容（可选）
+  mediaSource         String?                 @map("media_source") @db.VarChar(100) /// 媒体来源（可选）
+  introducer          String?                 @db.VarChar(100) /// 介绍人（可选）
+  notes               String?                 @db.Text /// 备注信息（可选）
+  basePrice           Decimal?                @map("base_price") @db.Decimal(15, 2) /// 基础价格（元，可选）
+  premiumRate         Decimal?                @map("premium_rate") @db.Decimal(10, 2) /// 溢价率（百分比，可选）
+  projectId           Int                     @map("project_id") /// 所属项目ID
+  createdAt           DateTime                @default(now()) @map("created_at") /// 创建时间
+  updatedAt           DateTime                @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@unique([projectId, houseNo])
-  @@index([projectId], map: "idx_project")
-  @@index([salesId], map: "idx_sales_person")
+  // 关联关系
+  project        Project         @relation(fields: [projectId], references: [id]) /// 所属项目
+  salesPersonnel SalesPersonnel? @relation(fields: [salesId], references: [employeeNo]) /// 负责销售人员
+
+  @@unique([projectId, houseNo]) /// 项目内房屋编号唯一约束
+  @@index([projectId], map: "idx_project") /// 项目ID索引
+  @@index([salesId], map: "idx_sales_person") /// 销售人员ID索引
   @@map("sales_control")
 }
 
+/// 停车位管理模型
+/// 存储停车位的基本信息和销售状态
 model ParkingSpace {
-  id          Int                     @id @default(autoincrement())
-  parkingNo   String                  @map("parking_no") @db.VarChar(50)
-  type        ParkingSpaceType?
-  price       Decimal                 @db.Decimal(15, 2)
-  salesStatus ParkingSpaceSalesStatus @default(AVAILABLE) @map("sales_status")
-  salesDate   DateTime?               @map("sales_date") @db.Date
-  buyer       String?                 @db.VarChar(255)
-  remark      String?                 @db.Text
-  projectId   Int                     @map("project_id")
-  createdAt   DateTime                @default(now()) @map("created_at")
-  updatedAt   DateTime                @default(now()) @updatedAt @map("updated_at")
-  location    String?                 @db.VarChar(100)
-  salesId     String?                 @map("sales_id") @db.VarChar(50)
-  project     Project                 @relation(fields: [projectId], references: [id])
+  id          Int                     @id @default(autoincrement()) /// 停车位ID，主键，自增
+  parkingNo   String                  @map("parking_no") @db.VarChar(50) /// 停车位编号
+  type        ParkingSpaceType? /// 停车位类型（可选）
+  price       Decimal                 @db.Decimal(15, 2) /// 停车位价格（元）
+  salesStatus ParkingSpaceSalesStatus @default(AVAILABLE) @map("sales_status") /// 销售状态，默认可售
+  salesDate   DateTime?               @map("sales_date") @db.Date /// 销售日期（可选）
+  buyer       String?                 @db.VarChar(255) /// 买家姓名（可选）
+  remark      String?                 @db.Text /// 备注信息（可选）
+  projectId   Int                     @map("project_id") /// 所属项目ID
+  createdAt   DateTime                @default(now()) @map("created_at") /// 创建时间
+  updatedAt   DateTime                @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
+  location    String?                 @db.VarChar(100) /// 停车位位置描述（可选）
+  salesId     String?                 @map("sales_id") @db.VarChar(50) /// 销售人员ID（可选）
 
-  @@unique([projectId, parkingNo])
-  @@index([projectId], map: "idx_project")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@unique([projectId, parkingNo]) /// 项目内停车位编号唯一约束
+  @@index([projectId], map: "idx_project") /// 项目ID索引
   @@map("parking_space")
 }
 
+/// 客户预约模型
+/// 存储客户看房预约信息
 model CustomerAppointment {
-  id             Int                       @id @default(autoincrement())
-  customerName   String                    @map("customer_name") @db.VarChar(100)
-  phone          String                    @db.VarChar(20)
-  startTime      DateTime                  @map("start_time")
-  endTime        DateTime                  @map("end_time")
-  status         CustomerAppointmentStatus @default(PENDING)
-  remark         String?                   @db.Text
-  projectId      Int                       @map("project_id")
-  createdAt      DateTime                  @default(now()) @map("created_at")
-  updatedAt      DateTime                  @default(now()) @updatedAt @map("updated_at")
-  salesId        String                    @map("sales_id") @db.VarChar(50)
-  project        Project                   @relation(fields: [projectId], references: [id])
-  salesPersonnel SalesPersonnel            @relation(fields: [salesId], references: [employeeNo])
+  id           Int                       @id @default(autoincrement()) /// 预约ID，主键，自增
+  customerName String                    @map("customer_name") @db.VarChar(100) /// 客户姓名
+  phone        String                    @db.VarChar(20) /// 客户联系电话
+  startTime    DateTime                  @map("start_time") /// 预约开始时间
+  endTime      DateTime                  @map("end_time") /// 预约结束时间
+  status       CustomerAppointmentStatus @default(PENDING) /// 预约状态，默认待确认
+  remark       String?                   @db.Text /// 备注信息（可选）
+  projectId    Int                       @map("project_id") /// 所属项目ID
+  createdAt    DateTime                  @default(now()) @map("created_at") /// 创建时间
+  updatedAt    DateTime                  @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
+  salesId      String                    @map("sales_id") @db.VarChar(50) /// 负责销售人员ID
 
-  @@index([salesId])
-  @@index([projectId], map: "customer_appointment_project_id_fkey")
+  // 关联关系
+  project        Project        @relation(fields: [projectId], references: [id]) /// 所属项目
+  salesPersonnel SalesPersonnel @relation(fields: [salesId], references: [employeeNo]) /// 负责销售人员
+
+  @@index([salesId]) /// 销售人员ID索引
+  @@index([projectId], map: "customer_appointment_project_id_fkey") /// 项目ID索引
   @@map("customer_appointment")
 }
 
+/// 已购客户模型
+/// 存储已购买房屋的客户详细信息
 model PurchasedCustomer {
-  id                Int             @id @default(autoincrement())
-  name              String          @db.VarChar(100)
-  houseNo           String          @map("house_no") @db.VarChar(50)
-  purchaseDate      DateTime?       @map("purchase_date") @db.Date
-  idCard            String?         @map("id_card") @db.VarChar(50)
-  isCorporate       Boolean         @default(false) @map("is_corporate")
-  email             String?         @db.VarChar(100)
-  phone             String?         @db.VarChar(20)
-  age               Int?
-  occupation        String?         @db.VarChar(100)
-  registeredAddress String?         @map("registered_address") @db.Text
-  mailingAddress    String?         @map("mailing_address") @db.Text
-  remark            String?         @db.Text
-  rating            CustomerRating?
-  projectId         Int             @map("project_id")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
-  project           Project         @relation(fields: [projectId], references: [id])
+  id                Int             @id @default(autoincrement()) /// 客户ID，主键，自增
+  name              String          @db.VarChar(100) /// 客户姓名
+  houseNo           String          @map("house_no") @db.VarChar(50) /// 购买的房屋编号
+  purchaseDate      DateTime?       @map("purchase_date") @db.Date /// 购买日期（可选）
+  idCard            String?         @map("id_card") @db.VarChar(50) /// 身份证号（可选）
+  isCorporate       Boolean         @default(false) @map("is_corporate") /// 是否为企业客户，默认否
+  email             String?         @db.VarChar(100) /// 电子邮箱（可选）
+  phone             String?         @db.VarChar(20) /// 联系电话（可选）
+  age               Int? /// 年龄（可选）
+  occupation        String?         @db.VarChar(100) /// 职业（可选）
+  registeredAddress String?         @map("registered_address") @db.Text /// 户籍地址（可选）
+  mailingAddress    String?         @map("mailing_address") @db.Text /// 通讯地址（可选）
+  remark            String?         @db.Text /// 备注信息（可选）
+  rating            CustomerRating? /// 客户评级（可选）
+  projectId         Int             @map("project_id") /// 所属项目ID
+  createdAt         DateTime        @default(now()) @map("created_at") /// 创建时间
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@index([houseNo], map: "idx_house_no")
-  @@index([projectId], map: "purchased_customer_project_id_fkey")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([houseNo], map: "idx_house_no") /// 房屋编号索引
+  @@index([projectId], map: "purchased_customer_project_id_fkey") /// 项目ID索引
   @@map("purchased_customer")
 }
 
+/// 访客问卷模型
+/// 存储访客填写的需求调查问卷
 model VisitorQuestionnaire {
-  id                  Int               @id @default(autoincrement())
-  questionnaireDate   DateTime          @map("questionnaire_date") @db.Date
-  name                String?           @db.VarChar(100)
-  age                 Int?
-  gender              Gender?
-  landline            String?           @db.VarChar(20)
-  phone               String?           @db.VarChar(20)
-  email               String?           @db.VarChar(100)
-  occupation          String?           @db.VarChar(100)
-  receptionistId      String?           @map("receptionist_id") @db.VarChar(50)
-  visitedHouse        String?           @map("visited_house") @db.VarChar(100)
-  purchaseTimeline    PurchaseTimeline? @map("purchase_timeline")
-  demandType          DemandType?       @map("demand_type")
-  idealArea           IdealArea?        @map("ideal_area")
-  roomDemand          RoomDemand?       @map("room_demand")
-  budgetRange         String?           @map("budget_range") @db.VarChar(100)
-  considerations      String?           @db.Text
-  satisfactionFactors String?           @map("satisfaction_factors") @db.Text
-  residenceArea       String?           @map("residence_area") @db.VarChar(100)
-  purchaseMotive      PurchaseMotive?   @map("purchase_motive")
-  infoSources         String?           @map("info_sources") @db.Text
-  rating              CustomerRating?
-  projectId           Int               @map("project_id")
-  createdAt           DateTime          @default(now()) @map("created_at")
-  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
-  project             Project           @relation(fields: [projectId], references: [id])
+  id                  Int               @id @default(autoincrement()) /// 问卷ID，主键，自增
+  questionnaireDate   DateTime          @map("questionnaire_date") @db.Date /// 问卷填写日期
+  name                String?           @db.VarChar(100) /// 访客姓名（可选）
+  age                 Int? /// 年龄（可选）
+  gender              Gender? /// 性别（可选）
+  landline            String?           @db.VarChar(20) /// 固定电话（可选）
+  phone               String?           @db.VarChar(20) /// 手机号码（可选）
+  email               String?           @db.VarChar(100) /// 电子邮箱（可选）
+  occupation          String?           @db.VarChar(100) /// 职业（可选）
+  receptionistId      String?           @map("receptionist_id") @db.VarChar(50) /// 接待人员ID（可选）
+  visitedHouse        String?           @map("visited_house") @db.VarChar(100) /// 看中的房屋（可选）
+  purchaseTimeline    PurchaseTimeline? @map("purchase_timeline") /// 购买时间规划（可选）
+  demandType          DemandType?       @map("demand_type") /// 需求类型（可选）
+  idealArea           IdealArea?        @map("ideal_area") /// 理想面积（可选）
+  roomDemand          RoomDemand?       @map("room_demand") /// 房间需求（可选）
+  budgetRange         String?           @map("budget_range") @db.VarChar(100) /// 预算范围（可选）
+  considerations      String?           @db.Text /// 考虑因素（可选）
+  satisfactionFactors String?           @map("satisfaction_factors") @db.Text /// 满意度因素（可选）
+  residenceArea       String?           @map("residence_area") @db.VarChar(100) /// 居住区域（可选）
+  purchaseMotive      PurchaseMotive?   @map("purchase_motive") /// 购买动机（可选）
+  infoSources         String?           @map("info_sources") @db.Text /// 信息来源（可选）
+  rating              CustomerRating? /// 客户评级（可选）
+  projectId           Int               @map("project_id") /// 所属项目ID
+  createdAt           DateTime          @default(now()) @map("created_at") /// 创建时间
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@index([receptionistId], map: "idx_receptionist")
-  @@index([projectId], map: "visitor_questionnaire_project_id_fkey")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([receptionistId], map: "idx_receptionist") /// 接待人员ID索引
+  @@index([projectId], map: "visitor_questionnaire_project_id_fkey") /// 项目ID索引
   @@map("visitor_questionnaire")
 }
 
+/// 退户记录模型
+/// 存储客户退户的相关信息
 model WithdrawalRecord {
-  id             Int                    @id @default(autoincrement())
-  customerName   String                 @map("customer_name") @db.VarChar(100)
-  building       String                 @db.VarChar(10)
-  floor          Int
-  unit           String                 @db.VarChar(10)
-  status         WithdrawalRecordStatus
-  reason         String?                @db.VarChar(100)
-  withdrawalDate DateTime               @map("withdrawal_date") @db.Date
-  housePrice     Decimal?               @map("house_price") @db.Decimal(15, 2)
-  unitPrice      Decimal?               @map("unit_price") @db.Decimal(15, 2)
-  parkingPrice   Decimal?               @map("parking_price") @db.Decimal(15, 2)
-  totalPrice     Decimal?               @map("total_price") @db.Decimal(15, 2)
-  houseNo        String?                @map("house_no") @db.VarChar(50)
-  projectId      Int                    @map("project_id")
-  createdAt      DateTime               @default(now()) @map("created_at")
-  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
-  project        Project                @relation(fields: [projectId], references: [id])
+  id             Int                    @id @default(autoincrement()) /// 退户记录ID，主键，自增
+  customerName   String                 @map("customer_name") @db.VarChar(100) /// 客户姓名
+  building       String                 @db.VarChar(10) /// 楼栋号
+  floor          Int /// 楼层号
+  unit           String                 @db.VarChar(10) /// 单元号
+  status         WithdrawalRecordStatus /// 退户状态
+  reason         String?                @db.VarChar(100) /// 退户原因（可选）
+  withdrawalDate DateTime               @map("withdrawal_date") @db.Date /// 退户日期
+  housePrice     Decimal?               @map("house_price") @db.Decimal(15, 2) /// 房屋价格（元，可选）
+  unitPrice      Decimal?               @map("unit_price") @db.Decimal(15, 2) /// 单价（元/平方米，可选）
+  parkingPrice   Decimal?               @map("parking_price") @db.Decimal(15, 2) /// 停车位价格（元，可选）
+  totalPrice     Decimal?               @map("total_price") @db.Decimal(15, 2) /// 总价格（元，可选）
+  houseNo        String?                @map("house_no") @db.VarChar(50) /// 房屋编号（可选）
+  projectId      Int                    @map("project_id") /// 所属项目ID
+  createdAt      DateTime               @default(now()) @map("created_at") /// 创建时间
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@index([projectId], map: "withdrawal_record_project_id_fkey")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([projectId], map: "withdrawal_record_project_id_fkey") /// 项目ID索引
   @@map("withdrawal_record")
 }
 
+/// 预算计划模型
+/// 存储项目的预算规划信息
 model BudgetPlan {
-  id            Int      @id @default(autoincrement())
-  category      String   @db.VarChar(100)
-  item          String?  @db.VarChar(100)
-  budget        Decimal  @db.Decimal(15, 2)
-  actualExpense Decimal  @default(0.00) @map("actual_expense") @db.Decimal(15, 2)
-  quantity      Int      @default(1)
-  unit          String?  @db.VarChar(20)
-  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)
-  vendor        String?  @db.VarChar(100)
-  executionRate Decimal? @map("execution_rate") @db.Decimal(10, 2)
-  remark        String?  @db.Text
-  projectId     Int      @map("project_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-  project       Project  @relation(fields: [projectId], references: [id])
+  id            Int      @id @default(autoincrement()) /// 预算计划ID，主键，自增
+  category      String   @db.VarChar(100) /// 预算类别
+  item          String?  @db.VarChar(100) /// 预算项目（可选）
+  budget        Decimal  @db.Decimal(15, 2) /// 预算金额（元）
+  actualExpense Decimal  @default(0.00) @map("actual_expense") @db.Decimal(15, 2) /// 实际支出（元），默认0
+  quantity      Int      @default(1) /// 数量，默认1
+  unit          String?  @db.VarChar(20) /// 单位（可选）
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2) /// 单价（元，可选）
+  vendor        String?  @db.VarChar(100) /// 供应商（可选）
+  executionRate Decimal? @map("execution_rate") @db.Decimal(10, 2) /// 执行率（百分比，可选）
+  remark        String?  @db.Text /// 备注信息（可选）
+  projectId     Int      @map("project_id") /// 所属项目ID
+  createdAt     DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@index([projectId], map: "budget_plan_project_id_fkey")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([projectId], map: "budget_plan_project_id_fkey") /// 项目ID索引
   @@map("budget_plan")
 }
 
+/// 费用管理模型
+/// 存储项目的实际费用支出记录
 model ExpenseManagement {
-  id            Int      @id @default(autoincrement())
-  expenseDate   DateTime @map("expense_date") @db.Date
-  category      String   @db.VarChar(100)
-  item          String?  @db.VarChar(100)
-  actualExpense Decimal  @default(0.00) @map("actual_expense") @db.Decimal(15, 2)
-  quantity      Int      @default(1)
-  unit          String?  @db.VarChar(20)
-  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2)
-  vendor        String?  @db.VarChar(100)
-  invoiceNo     String?  @map("invoice_no") @db.VarChar(50)
-  remark        String?  @db.Text
-  projectId     Int      @map("project_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-  project       Project  @relation(fields: [projectId], references: [id])
+  id            Int      @id @default(autoincrement()) /// 费用记录ID，主键，自增
+  expenseDate   DateTime @map("expense_date") @db.Date /// 费用发生日期
+  category      String   @db.VarChar(100) /// 费用类别
+  item          String?  @db.VarChar(100) /// 费用项目（可选）
+  actualExpense Decimal  @default(0.00) @map("actual_expense") @db.Decimal(15, 2) /// 实际支出金额（元），默认0
+  quantity      Int      @default(1) /// 数量，默认1
+  unit          String?  @db.VarChar(20) /// 单位（可选）
+  unitPrice     Decimal? @map("unit_price") @db.Decimal(15, 2) /// 单价（元，可选）
+  vendor        String?  @db.VarChar(100) /// 供应商（可选）
+  invoiceNo     String?  @map("invoice_no") @db.VarChar(50) /// 发票号码（可选）
+  remark        String?  @db.Text /// 备注信息（可选）
+  projectId     Int      @map("project_id") /// 所属项目ID
+  createdAt     DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@index([projectId], map: "expense_management_project_id_fkey")
-  @@index([category], map: "idx_category")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([projectId], map: "expense_management_project_id_fkey") /// 项目ID索引
+  @@index([category], map: "idx_category") /// 费用类别索引
   @@map("expense_management")
 }
 
+/// 佣金列表模型
+/// 存储销售人员的佣金计算和发放记录
 model CommissionList {
-  id                  Int                  @id @default(autoincrement())
-  building            String               @db.VarChar(10)
-  area                Decimal?             @db.Decimal(10, 2)
-  floor               Int
-  unit                String               @db.VarChar(10)
-  status              CommissionListStatus
-  salesDate           DateTime?            @map("sales_date") @db.Date
-  totalPrice          Decimal?             @map("total_price") @db.Decimal(15, 2)
-  totalCommissionRate Decimal              @default(0.00) @map("total_commission_rate") @db.Decimal(10, 2)
-  totalCommission     Decimal              @default(0.00) @map("total_commission") @db.Decimal(15, 2)
-  houseNo             String?              @map("house_no") @db.VarChar(50)
-  projectId           Int                  @map("project_id")
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at")
-  salesId             String               @map("sales_id") @db.VarChar(50)
-  commissionDetails   CommissionDetails[]
-  project             Project              @relation(fields: [projectId], references: [id])
-  salesPersonnel      SalesPersonnel       @relation(fields: [salesId], references: [employeeNo])
+  id                  Int                  @id @default(autoincrement()) /// 佣金记录ID，主键，自增
+  building            String               @db.VarChar(10) /// 楼栋号
+  area                Decimal?             @db.Decimal(10, 2) /// 房屋面积（平方米，可选）
+  floor               Int /// 楼层号
+  unit                String               @db.VarChar(10) /// 单元号
+  status              CommissionListStatus /// 佣金状态
+  salesDate           DateTime?            @map("sales_date") @db.Date /// 销售日期（可选）
+  totalPrice          Decimal?             @map("total_price") @db.Decimal(15, 2) /// 总价格（元，可选）
+  totalCommissionRate Decimal              @default(0.00) @map("total_commission_rate") @db.Decimal(10, 2) /// 总佣金率（百分比），默认0
+  totalCommission     Decimal              @default(0.00) @map("total_commission") @db.Decimal(15, 2) /// 总佣金金额（元），默认0
+  houseNo             String?              @map("house_no") @db.VarChar(50) /// 房屋编号（可选）
+  projectId           Int                  @map("project_id") /// 所属项目ID
+  createdAt           DateTime             @default(now()) @map("created_at") /// 创建时间
+  updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
+  salesId             String               @map("sales_id") @db.VarChar(50) /// 销售人员ID
 
-  @@index([salesId])
-  @@index([projectId], map: "commission_list_project_id_fkey")
+  // 关联关系
+  commissionDetails CommissionDetails[] /// 佣金明细列表
+  project           Project             @relation(fields: [projectId], references: [id]) /// 所属项目
+  salesPersonnel    SalesPersonnel      @relation(fields: [salesId], references: [employeeNo]) /// 销售人员
+
+  @@index([salesId]) /// 销售人员ID索引
+  @@index([projectId], map: "commission_list_project_id_fkey") /// 项目ID索引
   @@map("commission_list")
 }
 
+/// 佣金明细模型
+/// 存储佣金的分期发放明细
 model CommissionDetails {
-  id             Int                     @id @default(autoincrement())
-  commissionId   Int                     @map("commission_id")
-  commissionNo   Int                     @map("commission_no")
-  rate           Decimal                 @db.Decimal(10, 2)
-  status         CommissionDetailsStatus @default(NOT_COMMISSIONED)
-  amount         Decimal                 @db.Decimal(15, 2)
-  remark         String?                 @db.Text
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at")
-  commissionList CommissionList          @relation(fields: [commissionId], references: [id])
+  id           Int                     @id @default(autoincrement()) /// 佣金明细ID，主键，自增
+  commissionId Int                     @map("commission_id") /// 佣金记录ID
+  commissionNo Int                     @map("commission_no") /// 佣金期数
+  rate         Decimal                 @db.Decimal(10, 2) /// 佣金率（百分比）
+  status       CommissionDetailsStatus @default(NOT_COMMISSIONED) /// 佣金状态，默认未发放
+  amount       Decimal                 @db.Decimal(15, 2) /// 佣金金额（元）
+  remark       String?                 @db.Text /// 备注信息（可选）
+  createdAt    DateTime                @default(now()) @map("created_at") /// 创建时间
+  updatedAt    DateTime                @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@unique([commissionId, commissionNo], map: "uk_commission_no")
-  @@index([commissionId])
+  // 关联关系
+  commissionList CommissionList @relation(fields: [commissionId], references: [id]) /// 所属佣金记录
+
+  @@unique([commissionId, commissionNo], map: "uk_commission_no") /// 佣金记录内期数唯一约束
+  @@index([commissionId]) /// 佣金记录ID索引
   @@map("commission_details")
 }
 
+/// 订金管理模型
+/// 存储客户订金的收取和跟踪信息
 model DepositManagement {
-  id            Int                     @id @default(autoincrement())
-  buyer         String                  @db.VarChar(100)
-  amount        Decimal                 @db.Decimal(15, 2)
-  paymentStatus DepositManagementStatus @default(UNPAID) @map("payment_status")
-  paymentDate   DateTime?               @map("payment_date") @db.Date
-  dueDate       DateTime                @map("due_date") @db.Date
-  autoRemind    Boolean                 @default(true) @map("auto_remind")
-  remark        String?                 @db.Text
-  houseNo       String?                 @map("house_no") @db.VarChar(50)
-  projectId     Int                     @map("project_id")
-  createdAt     DateTime                @default(now()) @map("created_at")
-  updatedAt     DateTime                @default(now()) @updatedAt @map("updated_at")
-  project       Project                 @relation(fields: [projectId], references: [id])
+  id            Int                     @id @default(autoincrement()) /// 订金记录ID，主键，自增
+  buyer         String                  @db.VarChar(100) /// 买家姓名
+  amount        Decimal                 @db.Decimal(15, 2) /// 订金金额（元）
+  paymentStatus DepositManagementStatus @default(UNPAID) @map("payment_status") /// 付款状态，默认未付款
+  paymentDate   DateTime?               @map("payment_date") @db.Date /// 付款日期（可选）
+  dueDate       DateTime                @map("due_date") @db.Date /// 到期日期
+  autoRemind    Boolean                 @default(true) @map("auto_remind") /// 是否自动提醒，默认是
+  remark        String?                 @db.Text /// 备注信息（可选）
+  houseNo       String?                 @map("house_no") @db.VarChar(50) /// 房屋编号（可选）
+  projectId     Int                     @map("project_id") /// 所属项目ID
+  createdAt     DateTime                @default(now()) @map("created_at") /// 创建时间
+  updatedAt     DateTime                @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
 
-  @@index([projectId], map: "deposit_management_project_id_fkey")
-  @@index([houseNo], map: "idx_house_no")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([projectId], map: "deposit_management_project_id_fkey") /// 项目ID索引
+  @@index([houseNo], map: "idx_house_no") /// 房屋编号索引
   @@map("deposit_management")
 }
 
+/// 交房管理模型
+/// 存储房屋交付的相关信息和进度
 model HandoverManagement {
-  id              Int                      @id @default(autoincrement())
-  buyer           String                   @db.VarChar(100)
-  houseNo         String                   @map("house_no") @db.VarChar(50)
-  handoverDate    DateTime?                @map("handover_date") @db.Date
-  remark          String?                  @db.Text
-  projectId       Int                      @map("project_id")
-  createdAt       DateTime                 @default(now()) @map("created_at")
-  updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at")
-  completionItems String?                  @map("completion_items") @db.Text
-  defectItems     String?                  @map("defect_items") @db.Text
-  scheduledDate   DateTime?                @map("scheduled_date") @db.Date
-  status          HandoverManagementStatus @default(PENDING)
-  project         Project                  @relation(fields: [projectId], references: [id])
+  id              Int                      @id @default(autoincrement()) /// 交房记录ID，主键，自增
+  buyer           String                   @db.VarChar(100) /// 买家姓名
+  houseNo         String                   @map("house_no") @db.VarChar(50) /// 房屋编号
+  handoverDate    DateTime?                @map("handover_date") @db.Date /// 实际交房日期（可选）
+  remark          String?                  @db.Text /// 备注信息（可选）
+  projectId       Int                      @map("project_id") /// 所属项目ID
+  createdAt       DateTime                 @default(now()) @map("created_at") /// 创建时间
+  updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at") /// 最后更新时间
+  completionItems String?                  @map("completion_items") @db.Text /// 完工项目清单（可选）
+  defectItems     String?                  @map("defect_items") @db.Text /// 缺陷项目清单（可选）
+  scheduledDate   DateTime?                @map("scheduled_date") @db.Date /// 计划交房日期（可选）
+  status          HandoverManagementStatus @default(PENDING) /// 交房状态，默认待点交
 
-  @@index([houseNo])
-  @@index([projectId], map: "handover_management_project_id_fkey")
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id]) /// 所属项目
+
+  @@index([houseNo]) /// 房屋编号索引
+  @@index([projectId], map: "handover_management_project_id_fkey") /// 项目ID索引
   @@map("handover_management")
 }
 
+// ==================== 枚举类型定义 ====================
+
+/// 销控销售状态枚举
 enum SalesControlSalesStatus {
-  SOLD      @map("售出")
-  DEPOSIT   @map("訂金")
-  NOT_SALE  @map("不銷售")
-  AVAILABLE @map("未售出")
+  SOLD      @map("售出") /// 房屋已售出
+  DEPOSIT   @map("訂金") /// 客户已付订金
+  NOT_SALE  @map("不銷售") /// 房屋不对外销售
+  AVAILABLE @map("未售出") /// 房屋可售
 }
 
+/// 停车位类型枚举
 enum ParkingSpaceType {
-  FLAT            @map("平面")
-  MECHANICAL_TOP  @map("機械上層")
-  MECHANICAL_MID  @map("機械中層")
-  MECHANICAL_BOT  @map("機械下層")
-  MECHANICAL_MOVE @map("機械平移")
-  MOTORCYCLE      @map("機車位")
-  BICYCLE         @map("腳踏車位")
-  SELF_BUILT      @map("自設")
-  LEGAL           @map("法定")
+  FLAT            @map("平面") /// 平面停车位
+  MECHANICAL_TOP  @map("機械上層") /// 机械式上层停车位
+  MECHANICAL_MID  @map("機械中層") /// 机械式中层停车位
+  MECHANICAL_BOT  @map("機械下層") /// 机械式下层停车位
+  MECHANICAL_MOVE @map("機械平移") /// 机械式平移停车位
+  MOTORCYCLE      @map("機車位") /// 摩托车停车位
+  BICYCLE         @map("腳踏車位") /// 自行车停车位
+  SELF_BUILT      @map("自設") /// 自建停车位
+  LEGAL           @map("法定") /// 法定停车位
 }
 
+/// 停车位销售状态枚举
 enum ParkingSpaceSalesStatus {
-  SOLD      @map("售出")
-  DEPOSIT   @map("訂金")
-  NOT_SALE  @map("不銷售")
-  AVAILABLE @map("未售出")
+  SOLD      @map("售出") /// 停车位已售出
+  DEPOSIT   @map("訂金") /// 客户已付订金
+  NOT_SALE  @map("不銷售") /// 停车位不对外销售
+  AVAILABLE @map("未售出") /// 停车位可售
 }
 
+/// 客户预约状态枚举
 enum CustomerAppointmentStatus {
-  PENDING   @map("待確認")
-  CONFIRMED @map("已確認")
-  CANCELLED @map("已取消")
+  PENDING   @map("待確認") /// 预约待确认
+  CONFIRMED @map("已確認") /// 预约已确认
+  CANCELLED @map("已取消") /// 预约已取消
 }
 
+/// 客户评级枚举
 enum CustomerRating {
-  S
-  A
-  B
-  C
-  D
+  S /// S级客户（最高级别）
+  A /// A级客户（高级别）
+  B /// B级客户（中级别）
+  C /// C级客户（低级别）
+  D /// D级客户（最低级别）
 }
 
+/// 性别枚举
 enum Gender {
-  MALE    @map("男")
-  FEMALE  @map("女")
-  PRIVATE @map("不透露")
+  MALE    @map("男") /// 男性
+  FEMALE  @map("女") /// 女性
+  PRIVATE @map("不透露") /// 不透露性别
 }
 
+/// 购买时间规划枚举
 enum PurchaseTimeline {
-  HALF_YEAR @map("半年內")
-  ONE_YEAR  @map("一年內")
-  OTHER     @map("其他")
+  HALF_YEAR @map("半年內") /// 半年内购买
+  ONE_YEAR  @map("一年內") /// 一年内购买
+  OTHER     @map("其他") /// 其他时间规划
 }
 
+/// 需求类型枚举
 enum DemandType {
-  STRUCTURE @map("結構體")
-  FINISHED  @map("成屋")
-  PRESALE   @map("預售屋")
+  STRUCTURE @map("結構體") /// 结构体（毛坯房）
+  FINISHED  @map("成屋") /// 成屋（精装房）
+  PRESALE   @map("預售屋") /// 预售屋
 }
 
+/// 理想面积枚举
 enum IdealArea {
-  UNDER_21   @map("21坪以下")
-  AREA_21_30 @map("21-30坪")
-  AREA_31_40 @map("31-40坪")
-  AREA_41_50 @map("41-50坪")
-  OVER_51    @map("51坪以上")
-  OTHER      @map("其他")
+  UNDER_21   @map("21坪以下") /// 21坪以下
+  AREA_21_30 @map("21-30坪") /// 21-30坪
+  AREA_31_40 @map("31-40坪") /// 31-40坪
+  AREA_41_50 @map("41-50坪") /// 41-50坪
+  OVER_51    @map("51坪以上") /// 51坪以上
+  OTHER      @map("其他") /// 其他面积
 }
 
+/// 房间需求枚举
 enum RoomDemand {
-  TWO_ROOM   @map("二房")
-  THREE_ROOM @map("三房")
-  FOUR_ROOM  @map("四房")
-  SHOP       @map("店面")
-  OTHER      @map("其他")
+  TWO_ROOM   @map("二房") /// 二房
+  THREE_ROOM @map("三房") /// 三房
+  FOUR_ROOM  @map("四房") /// 四房
+  SHOP       @map("店面") /// 店面
+  OTHER      @map("其他") /// 其他房间需求
 }
 
+/// 购买动机枚举
 enum PurchaseMotive {
-  FIRST_BUY    @map("首購")
-  UPGRADE      @map("換屋")
-  INVESTMENT   @map("投資置產")
-  FOR_CHILDREN @map("為子女購屋")
-  OTHER        @map("其他")
+  FIRST_BUY    @map("首購") /// 首次购房
+  UPGRADE      @map("換屋") /// 换房改善
+  INVESTMENT   @map("投資置產") /// 投资置产
+  FOR_CHILDREN @map("為子女購屋") /// 为子女购房
+  OTHER        @map("其他") /// 其他动机
 }
 
+/// 退户记录状态枚举
 enum WithdrawalRecordStatus {
-  APPLIED    @map("已申請")
-  PROCESSING @map("處理中")
-  COMPLETED  @map("已完成")
-  CANCELLED  @map("已取消")
+  APPLIED    @map("已申請") /// 已申请退户
+  PROCESSING @map("處理中") /// 退户处理中
+  COMPLETED  @map("已完成") /// 退户已完成
+  CANCELLED  @map("已取消") /// 退户申请已取消
 }
 
+/// 佣金列表状态枚举
 enum CommissionListStatus {
-  SOLD    @map("售出")
-  DEPOSIT @map("訂金")
+  SOLD    @map("售出") /// 房屋已售出
+  DEPOSIT @map("訂金") /// 客户已付订金
 }
 
+/// 佣金明细状态枚举
 enum CommissionDetailsStatus {
-  COMMISSIONED     @map("已請傭")
-  NOT_COMMISSIONED @map("未請傭")
+  COMMISSIONED     @map("已請傭") /// 佣金已申请
+  NOT_COMMISSIONED @map("未請傭") /// 佣金未申请
 }
 
+/// 订金管理状态枚举
 enum DepositManagementStatus {
-  PAID         @map("已結清")
-  PARTIAL_PAID @map("部分付款")
-  UNPAID       @map("未付款")
-  OVERDUE      @map("逾期")
+  PAID         @map("已結清") /// 订金已结清
+  PARTIAL_PAID @map("部分付款") /// 部分付款
+  UNPAID       @map("未付款") /// 未付款
+  OVERDUE      @map("逾期") /// 付款逾期
 }
 
+/// 交房管理状态枚举
 enum HandoverManagementStatus {
-  PENDING     @map("待點交")
-  IN_PROGRESS @map("點交中")
-  COMPLETED   @map("已完成")
-  DELAYED     @map("延期")
+  PENDING     @map("待點交") /// 待点交
+  IN_PROGRESS @map("點交中") /// 点交进行中
+  COMPLETED   @map("已完成") /// 点交已完成
+  DELAYED     @map("延期") /// 点交延期
 }
