@@ -52,26 +52,43 @@ interface Appointment {
 
 interface AppointmentStats {
   total: number
-  scheduled: number
+  pending: number
+  confirmed: number
   completed: number
   cancelled: number
-  noShow: number
   todayAppointments: number
   upcomingAppointments: number
+  completionRate: string
 }
 
 const statusLabels = {
-  scheduled: '已預約',
-  completed: '已完成',
-  cancelled: '已取消',
-  no_show: '未出席'
+  '待確認': '已預約',
+  '已確認': '已確認',
+  '已完成': '已完成',
+  '已取消': '已取消',
+  'scheduled': '已預約',
+  'completed': '已完成',
+  'cancelled': '已取消',
+  'no_show': '未出席'
 }
 
 const statusColors = {
-  scheduled: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-  no_show: 'bg-gray-100 text-gray-800'
+  '待確認': 'bg-blue-100 text-blue-800',
+  '已確認': 'bg-yellow-100 text-yellow-800',
+  '已完成': 'bg-green-100 text-green-800',
+  '已取消': 'bg-red-100 text-red-800',
+  'scheduled': 'bg-blue-100 text-blue-800',
+  'completed': 'bg-green-100 text-green-800',
+  'cancelled': 'bg-red-100 text-red-800',
+  'no_show': 'bg-gray-100 text-gray-800'
+}
+
+// 状态映射：前端英文值 -> 后端中文值
+const statusMapping = {
+  'pending': '待確認',
+  'confirmed': '已確認',
+  'completed': '已完成',
+  'cancelled': '已取消'
 }
 
 export default function AppointmentsPage() {
@@ -115,7 +132,13 @@ export default function AppointmentsPage() {
   const fetchAppointments = async () => {
     try {
       const params = new URLSearchParams()
-      if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (statusFilter !== 'all') {
+        // 将前端英文状态值转换为后端中文状态值
+        const mappedStatus = statusMapping[statusFilter as keyof typeof statusMapping]
+        if (mappedStatus) {
+          params.append('status', mappedStatus)
+        }
+      }
       if (searchTerm) params.append('search', searchTerm)
       if (dateFilter) params.append('date', dateFilter.toISOString().split('T')[0])
       params.append('page', pagination.page.toString())
@@ -531,7 +554,7 @@ export default function AppointmentsPage() {
       
       {/* 統計卡片 */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">總預約數</CardTitle>
@@ -544,21 +567,41 @@ export default function AppointmentsPage() {
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">今日預約</CardTitle>
+              <CardTitle className="text-sm font-medium">待確認</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.todayAppointments}</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.pending}</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">即將到來</CardTitle>
+              <CardTitle className="text-sm font-medium">已確認</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{stats.confirmed}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">已完成</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.upcomingAppointments}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">已取消</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
             </CardContent>
           </Card>
           
@@ -568,8 +611,8 @@ export default function AppointmentsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}%
+              <div className="text-2xl font-bold text-green-600">
+                {stats.completionRate}%
               </div>
             </CardContent>
           </Card>
@@ -591,15 +634,15 @@ export default function AppointmentsPage() {
         </div>
         
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="篩選狀態" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">所有狀態</SelectItem>
-            <SelectItem value="scheduled">已預約</SelectItem>
+            <SelectItem value="all">全部狀態</SelectItem>
+            <SelectItem value="pending">已預約</SelectItem>
+            <SelectItem value="confirmed">已確認</SelectItem>
             <SelectItem value="completed">已完成</SelectItem>
             <SelectItem value="cancelled">已取消</SelectItem>
-            <SelectItem value="no_show">未出席</SelectItem>
           </SelectContent>
         </Select>
         
@@ -707,10 +750,10 @@ export default function AppointmentsPage() {
                                <SelectValue />
                              </SelectTrigger>
                              <SelectContent>
-                               <SelectItem value="scheduled">已預約</SelectItem>
+                               <SelectItem value="pending">已預約</SelectItem>
+                               <SelectItem value="confirmed">已確認</SelectItem>
                                <SelectItem value="completed">已完成</SelectItem>
                                <SelectItem value="cancelled">已取消</SelectItem>
-                               <SelectItem value="no_show">未出席</SelectItem>
                              </SelectContent>
                            </Select>
                          </div>

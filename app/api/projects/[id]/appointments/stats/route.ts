@@ -20,8 +20,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const basicStatsQuery = `
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN status = '待確認' THEN 1 END) as scheduled,
-        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = '待確認' THEN 1 END) as pending,
+        COUNT(CASE WHEN status = '已確認' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN status = '已完成' THEN 1 END) as completed,
         COUNT(CASE WHEN status = '已取消' THEN 1 END) as cancelled
       FROM customer_appointment 
       WHERE project_id = ?
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       SELECT 
         DATE_FORMAT(start_time, '%Y-%m') as month,
         COUNT(*) as total,
-        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = '已完成' THEN 1 END) as completed,
         COUNT(CASE WHEN status = '已取消' THEN 1 END) as cancelled
       FROM customer_appointment 
       WHERE project_id = ? 
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       SELECT 
         remark,
         COUNT(*) as count,
-        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed
+        COUNT(CASE WHEN status = '已完成' THEN 1 END) as completed
       FROM customer_appointment 
       WHERE project_id = ? AND remark IS NOT NULL AND remark != ''
       GROUP BY remark
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       SELECT 
         sales_id,
         COUNT(*) as total,
-        COUNT(CASE WHEN status = '已確認' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = '已完成' THEN 1 END) as completed,
         COUNT(CASE WHEN status = '已取消' THEN 1 END) as cancelled
       FROM customer_appointment 
       WHERE project_id = ? AND sales_id IS NOT NULL AND sales_id != ''
@@ -156,7 +157,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     
     const response = {
       total: Number(basicStats.total) || 0,
-      scheduled: Number(basicStats.scheduled) || 0,
+      pending: Number(basicStats.pending) || 0,
+      confirmed: Number(basicStats.confirmed) || 0,
       completed: Number(basicStats.completed) || 0,
       cancelled: Number(basicStats.cancelled) || 0,
       todayAppointments: Number(todayCount.count) || 0,

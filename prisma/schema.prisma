@@ -251,22 +251,20 @@ model PurchasedCustomer {
   remark            String?         @db.Text
   /// 客户评级（可选）
   rating            CustomerRating?
-  /// 销售人员ID（可选）
-  salesId           String?         @map("sales_id") @db.VarChar(50)
   /// 所属项目ID
   projectId         Int             @map("project_id")
   /// 创建时间
   createdAt         DateTime        @default(now()) @map("created_at")
   /// 最后更新时间
   updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at")
+  /// 销售人员ID（可选）
+  salesId           String?         @map("sales_id") @db.VarChar(50)
+  project           Project         @relation(fields: [projectId], references: [id])
+  salesPersonnel    SalesPersonnel? @relation(fields: [salesId], references: [employeeNo])
 
-  // 关联关系
-  project        Project        @relation(fields: [projectId], references: [id]) /// 所属项目
-  salesPersonnel SalesPersonnel? @relation(fields: [salesId], references: [employeeNo]) /// 负责销售人员
-
-  @@index([houseNo], map: "idx_house_no") /// 房屋编号索引
-  @@index([projectId], map: "purchased_customer_project_id_fkey") /// 项目ID索引
-  @@index([salesId], map: "idx_sales_person") /// 销售人员ID索引
+  @@index([houseNo], map: "idx_house_no")
+  @@index([projectId], map: "purchased_customer_project_id_fkey")
+  @@index([salesId], map: "idx_sales_person")
   @@map("purchased_customer")
 }
 
@@ -636,6 +634,8 @@ enum CustomerAppointmentStatus {
   PENDING   @map("待確認")
   /// 预约已确认
   CONFIRMED @map("已確認")
+  /// 预约已完成
+  COMPLETED @map("已完成")
   /// 预约已取消
   CANCELLED @map("已取消")
 }

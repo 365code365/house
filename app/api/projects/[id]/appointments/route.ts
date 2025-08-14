@@ -182,9 +182,6 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
       throw createValidationError('該時間段已有預約')
     }
     
-    // 調試：打印sales_id值
-    console.log('準備插入的sales_id:', mappedSalesId, '類型:', typeof mappedSalesId);
-    
     // 使用Prisma Client創建預約記錄
     const result = await prisma.customerAppointment.create({
       data: {

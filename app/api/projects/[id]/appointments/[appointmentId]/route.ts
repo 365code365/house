@@ -76,8 +76,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    // 验证必填字段
-    if (!customer_name || !mappedPhone || !mappedStartTime || !mappedEndTime) {
+    // 验证必填字段 - 只在创建新预约或更新所有字段时验证
+    // 如果只是更新状态，不需要验证其他字段
+    const isStatusOnlyUpdate = Object.keys(body).length === 1 && body.hasOwnProperty('status')
+    
+    if (!isStatusOnlyUpdate && (!customer_name || !mappedPhone || !mappedStartTime || !mappedEndTime)) {
       return NextResponse.json({ error: '缺少必填字段' }, { status: 400 })
     }
     
@@ -102,33 +105,72 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
     
     // 准备更新数据
-    const updateData: any = {
-      customerName: customer_name,
-      phone: mappedPhone,
-      startTime: new Date(mappedStartTime),
-      endTime: new Date(mappedEndTime),
-      salesId: mappedSalesId,
-      remark: mappedRemark || null
-    }
+    let updateData: any = {}
     
-    // 如果提供了状态，也更新状态
-    if (status) {
-      updateData.status = status
+    if (isStatusOnlyUpdate) {
+      // 如果只是更新状态，只更新状态字段
+      // 映射状态值到Prisma枚举
+      let mappedStatus = status
+      if (status === 'completed') {
+        mappedStatus = 'COMPLETED'
+      } else if (status === 'confirmed') {
+        mappedStatus = 'CONFIRMED'
+      } else if (status === 'cancelled') {
+        mappedStatus = 'CANCELLED'
+      } else if (status === 'pending') {
+        mappedStatus = 'PENDING'
+      }
+      
+      updateData.status = mappedStatus
+    } else {
+      // 如果是完整更新，更新所有字段
+      updateData = {
+        customerName: customer_name,
+        phone: mappedPhone,
+        startTime: new Date(mappedStartTime),
+        endTime: new Date(mappedEndTime),
+        salesId: mappedSalesId,
+        remark: mappedRemark || null
+      }
+      
+      // 如果提供了状态，也更新状态
+      if (status) {
+        let mappedStatus = status
+        if (status === 'completed') {
+          mappedStatus = 'COMPLETED'
+        } else if (status === 'confirmed') {
+          mappedStatus = 'CONFIRMED'
+        } else if (status === 'cancelled') {
+          mappedStatus = 'CANCELLED'
+        } else if (status === 'pending') {
+          mappedStatus = 'PENDING'
+        }
+        
+        updateData.status = mappedStatus
+      }
     }
     
     // 使用Prisma Client更新预约记录
-    const result = await prisma.customerAppointment.update({
-      where: {
-        id: parseInt(appointmentId)
-      },
-      data: updateData
-    })
-    
-    if (result && result.id) {
-      return NextResponse.json(result)
+    try {
+      const result = await prisma.customerAppointment.update({
+        where: {
+          id: parseInt(appointmentId)
+        },
+        data: updateData
+      })
+      
+      if (result && result.id) {
+        return NextResponse.json(result)
+      }
+      
+      return NextResponse.json({ error: '更新预约失败' }, { status: 500 })
+    } catch (prismaError) {
+      console.error('Prisma更新失败:', prismaError)
+      return NextResponse.json({ 
+        error: '更新预约失败', 
+        details: prismaError instanceof Error ? prismaError.message : '未知错误'
+      }, { status: 500 })
     }
-    
-    return NextResponse.json({ error: '更新预约失败' }, { status: 500 })
   } catch (error) {
     console.error('更新预约失败:', error)
     return NextResponse.json({ error: '更新预约失败' }, { status: 500 })
