@@ -56,11 +56,11 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       projectId: parseInt(projectId)
     }
     
-    if (type) {
+    if (type && type !== 'all') {
       whereConditions.type = type
     }
     
-    if (status) {
+    if (status && status !== 'all') {
       whereConditions.salesStatus = status
     }
     
@@ -90,7 +90,7 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       take: pageSize
     })
     
-    // 轉換為前端期望的格式
+    // 轉換為前端期望的格式 - 保持與Prisma模型一致的字段名
     const formattedSpaces = parkingSpaces.map(space => ({
       id: space.id,
       projectId: space.projectId,
@@ -98,10 +98,11 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       type: space.type,
       location: space.location,
       price: space.price,
-      status: space.salesStatus,
+      salesStatus: space.salesStatus, // 保持原始字段名
+      salesDate: space.salesDate,     // 保持原始字段名
       buyer: space.buyer,
       salesId: space.salesId,
-      contractDate: space.salesDate,
+      remark: space.remark,
       createdAt: space.createdAt,
       updatedAt: space.updatedAt
     }))
@@ -120,11 +121,11 @@ function mapParkingStatus(frontendStatus: string): string {
     'available': 'AVAILABLE',
     'reserved': 'DEPOSIT', 
     'sold': 'SOLD',
-    'unavailable': 'UNAVAILABLE'
+    'not_sale': 'NOT_SALE'
   }
   
   // 如果已經是大寫格式，直接返回
-  if (['AVAILABLE', 'DEPOSIT', 'SOLD', 'UNAVAILABLE'].includes(frontendStatus)) {
+  if (['AVAILABLE', 'DEPOSIT', 'SOLD', 'NOT_SALE'].includes(frontendStatus)) {
     return frontendStatus
   }
   
@@ -140,7 +141,7 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
       type,
       location,
       price,
-      status = 'available',
+      salesStatus = 'available',
       buyer,
       salesId,
       contractDate
@@ -174,7 +175,7 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     
     // 轉換類型值和狀態值
     const mappedType = mapParkingType(type)
-    const mappedStatus = mapParkingStatus(status)
+    const mappedStatus = mapParkingStatus(salesStatus)
     
     // 創建停車位記錄
     const newRecord = await prisma.parkingSpace.create({
@@ -187,11 +188,12 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
         salesStatus: mappedStatus as any,
         buyer: buyer || null,
         salesId: salesId || null,
-        salesDate: contractDate ? new Date(contractDate) : null
+        salesDate: contractDate ? new Date(contractDate) : null,
+        remark: null
       }
     })
     
-    // 返回創建的記錄，轉換為前端期望的格式
+    // 返回創建的記錄，保持與Prisma模型一致的字段名
     const formattedRecord = {
       id: newRecord.id,
       projectId: newRecord.projectId,
@@ -199,10 +201,11 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
       type: newRecord.type,
       location: newRecord.location,
       price: newRecord.price,
-      status: newRecord.salesStatus,
+      salesStatus: newRecord.salesStatus,
+      salesDate: newRecord.salesDate,
       buyer: newRecord.buyer,
       salesId: newRecord.salesId,
-      contractDate: newRecord.salesDate,
+      remark: newRecord.remark,
       createdAt: newRecord.createdAt,
       updatedAt: newRecord.updatedAt
     }

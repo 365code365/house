@@ -37,11 +37,11 @@ function mapParkingStatus(frontendStatus: string): string {
     'available': 'AVAILABLE',
     'reserved': 'DEPOSIT', 
     'sold': 'SOLD',
-    'unavailable': 'UNAVAILABLE'
+    'not_sale': 'NOT_SALE'
   }
   
   // 如果已經是大寫格式，直接返回
-  if (['AVAILABLE', 'DEPOSIT', 'SOLD', 'UNAVAILABLE'].includes(frontendStatus)) {
+  if (['AVAILABLE', 'DEPOSIT', 'SOLD', 'NOT_SALE'].includes(frontendStatus)) {
     return frontendStatus
   }
   
@@ -54,16 +54,21 @@ export const PUT = withErrorHandler(async (
   { params }: { params: { id: string; spaceId: string } }
 ) => {
   const { id: projectId, spaceId } = params
+  const body = await request.json()
+  
+  console.log('PUT /parking/[spaceId] - Request body:', body)
+  console.log('PUT /parking/[spaceId] - Params:', { projectId, spaceId })
+  
   const {
     parkingNo,
     type,
     location,
     price,
-    status,
+    salesStatus,
     buyer,
     salesId,
     contractDate
-  } = await request.json()
+  } = body
   
   // 檢查停車位是否存在且屬於該項目
   const existingSpace = await prisma.parkingSpace.findFirst({
@@ -92,20 +97,31 @@ export const PUT = withErrorHandler(async (
   
   // 映射停車位類型和狀態值
   const mappedType = mapParkingType(type)
-  const mappedStatus = mapParkingStatus(status)
+  const mappedStatus = mapParkingStatus(salesStatus)
+  
+  console.log('PUT /parking/[spaceId] - Mapped values:', { 
+    originalType: type, 
+    mappedType, 
+    originalStatus: salesStatus, 
+    mappedStatus 
+  })
+  
+  const updateData = {
+    parkingNo: parkingNo,
+    type: mappedType as any,
+    location: location,
+    price: parseFloat(price),
+    salesStatus: mappedStatus as any,
+    buyer: buyer || null,
+    salesId: salesId || null,
+    salesDate: contractDate ? new Date(contractDate) : null
+  }
+  
+  console.log('PUT /parking/[spaceId] - Update data:', updateData)
   
   await prisma.parkingSpace.update({
     where: { id: parseInt(spaceId) },
-    data: {
-      parkingNo: parkingNo,
-      type: mappedType as any,
-      location: location,
-      price: parseFloat(price),
-      salesStatus: mappedStatus as any,
-      buyer: buyer || null,
-      salesId: salesId || null,
-      salesDate: contractDate ? new Date(contractDate) : null
-    }
+    data: updateData
   })
   
   return createSuccessResponse({ message: '停車位已更新' })
@@ -168,17 +184,19 @@ export async function GET(
       return NextResponse.json({ error: '停車位不存在' }, { status: 404 })
     }
     
-    // 轉換為前端期望的格式
+    // 轉換為前端期望的格式 - 保持與Prisma模型一致的字段名
     return NextResponse.json({
       id: parkingSpace.id,
+      projectId: parkingSpace.projectId,
       parkingNo: parkingSpace.parkingNo,
       type: parkingSpace.type,
       location: parkingSpace.location,
       price: parkingSpace.price,
-      status: parkingSpace.salesStatus,
+      salesStatus: parkingSpace.salesStatus,
+      salesDate: parkingSpace.salesDate,
       buyer: parkingSpace.buyer,
       salesId: parkingSpace.salesId,
-      contractDate: parkingSpace.salesDate,
+      remark: parkingSpace.remark,
       createdAt: parkingSpace.createdAt,
       updatedAt: parkingSpace.updatedAt
     })

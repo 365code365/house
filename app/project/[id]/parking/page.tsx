@@ -11,19 +11,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Edit, Trash2, Car, Search, Filter } from 'lucide-react'
-import { ParkingSpace } from '@/lib/db'
+import { 
+  ParkingSpace, 
+  ParkingFormData, 
+  ParkingStats,
+  TYPE_LABELS,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  STATUS_MAPPING,
+  REVERSE_STATUS_MAPPING
+} from '@/types/parking'
 import { formatCurrency } from '@/lib/utils'
-
-interface ParkingFormData {
-  parkingNo: string
-  type: string
-  location: string
-  price: number
-  status: string
-  buyer?: string
-  salesId?: string
-  contractDate?: string
-}
 
 export default function ParkingPage() {
   const params = useParams()
@@ -47,7 +45,7 @@ export default function ParkingPage() {
     type: 'FLAT',
     location: '',
     price: 0,
-    status: 'available'
+    salesStatus: 'available'
   })
 
   // 獲取銷售人員數據
@@ -113,17 +111,12 @@ export default function ParkingPage() {
     }))
   }
 
-  // 狀態值映射：前端到後端
-  const statusMapping = {
-    'available': 'AVAILABLE',
-    'reserved': 'DEPOSIT',
-    'sold': 'SOLD',
-    'not_sale': 'NOT_SALE'
-  }
-
   // 處理表單提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    console.log('Form submission - editingSpace:', editingSpace) // 添加调试日志
+    console.log('Form submission - formData:', formData) // 添加调试日志
     
     try {
       const url = editingSpace 
@@ -132,30 +125,42 @@ export default function ParkingPage() {
       
       const method = editingSpace ? 'PUT' : 'POST'
       
+      const requestBody = {
+        parkingNo: formData.parkingNo,
+        type: formData.type,
+        location: formData.location,
+        price: formData.price,
+        salesStatus: formData.salesStatus, // 直接发送前端状态值，让API处理映射
+        buyer: formData.buyer || null,
+        salesId: formData.salesId || null,
+        contractDate: formData.contractDate || null,
+      }
+      
+      console.log('Form submission - request body:', requestBody) // 添加调试日志
+      console.log('Form submission - URL:', url) // 添加调试日志
+      console.log('Form submission - method:', method) // 添加调试日志
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          parkingNo: formData.parkingNo,
-          type: formData.type,
-          location: formData.location,
-          price: formData.price,
-          status: statusMapping[formData.status as keyof typeof statusMapping] || formData.status,
-          buyer: formData.buyer || null,
-          salesId: formData.salesId || null,
-          contractDate: formData.contractDate || null,
-        }),
+        body: JSON.stringify(requestBody),
       })
       
+      console.log('Form submission - response status:', response.status) // 添加调试日志
+      
       if (response.ok) {
+        const responseData = await response.json()
+        console.log('Form submission - response data:', responseData) // 添加调试日志
+        
         fetchParkingSpaces()
         resetForm()
         setIsCreateDialogOpen(false)
         setEditingSpace(null)
       } else {
         const error = await response.json()
+        console.error('Form submission - error:', error) // 添加调试日志
         alert(error.error || '操作失敗')
       }
     } catch (error) {
@@ -171,31 +176,31 @@ export default function ParkingPage() {
       type: 'FLAT',
       location: '',
       price: 0,
-      status: 'available'
+      salesStatus: 'available'
     })
-  }
-
-  // 狀態值映射：後端到前端
-  const reverseStatusMapping = {
-    'AVAILABLE': 'available',
-    'DEPOSIT': 'reserved',
-    'SOLD': 'sold',
-    'NOT_SALE': 'not_sale'
   }
 
   // 處理編輯
   const handleEdit = (space: ParkingSpace) => {
+    console.log('Editing space:', space) // 添加调试日志
+    
     setEditingSpace(space)
     setFormData({
       parkingNo: space.parkingNo,
       type: space.type || 'FLAT',
       location: space.location || '',
       price: Number(space.price),
-      status: reverseStatusMapping[space.salesStatus as keyof typeof reverseStatusMapping] || (space.salesStatus ? space.salesStatus.toLowerCase() : 'available'),
+      salesStatus: REVERSE_STATUS_MAPPING[space.salesStatus] || 'available',
       buyer: space.buyer || '',
       salesId: space.salesId || '',
-      contractDate: space.salesDate ? (space.salesDate instanceof Date ? space.salesDate.toISOString().split('T')[0] : new Date(space.salesDate).toISOString().split('T')[0]) : '',
+      contractDate: space.salesDate ? 
+        (space.salesDate instanceof Date ? 
+          space.salesDate.toISOString().split('T')[0] : 
+          new Date(space.salesDate).toISOString().split('T')[0]
+        ) : '',
     })
+    
+    console.log('Form data set to:', formData) // 添加调试日志
     setIsCreateDialogOpen(true)
   }
 
@@ -218,35 +223,6 @@ export default function ParkingPage() {
       console.error('刪除失敗:', error)
       alert('刪除失敗')
     }
-  }
-
-  // 狀態顏色映射（後端返回大寫狀態值）
-  const statusColors = {
-    AVAILABLE: 'bg-green-100 text-green-800',
-    DEPOSIT: 'bg-yellow-100 text-yellow-800',
-    SOLD: 'bg-red-100 text-red-800',
-    NOT_SALE: 'bg-gray-100 text-gray-800'
-  }
-
-  // 狀態標籤映射（後端返回大寫狀態值）
-  const statusLabels = {
-    AVAILABLE: '可售',
-    DEPOSIT: '預約',
-    SOLD: '已售',
-    NOT_SALE: '不可售'
-  }
-
-  // 類型標籤映射（後端返回英文枚舉值）
-  const typeLabels = {
-    FLAT: '平面車位',
-    MECHANICAL_TOP: '機械上層',
-    MECHANICAL_MID: '機械中層',
-    MECHANICAL_BOT: '機械下層',
-    MECHANICAL_MOVE: '機械移動',
-    MOTORCYCLE: '機車位',
-    BICYCLE: '腳踏車位',
-    SELF_BUILT: '自建車位',
-    LEGAL: '法定車位'
   }
 
   // 統計數據 - 使用useMemo優化性能
@@ -339,10 +315,10 @@ export default function ParkingPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="status">狀態</Label>
+                <Label htmlFor="salesStatus">狀態</Label>
                 <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  value={formData.salesStatus}
+                  onValueChange={(value) => setFormData({ ...formData, salesStatus: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -355,7 +331,7 @@ export default function ParkingPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {(formData.status === 'reserved' || formData.status === 'sold') && (
+              {(formData.salesStatus === 'reserved' || formData.salesStatus === 'sold') && (
                 <>
                   <div>
                     <Label htmlFor="buyer">客戶姓名</Label>
@@ -478,15 +454,15 @@ export default function ParkingPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部類型</SelectItem>
-                  <SelectItem value="平面">平面車位</SelectItem>
-                  <SelectItem value="機械上層">機械上層</SelectItem>
-                  <SelectItem value="機械中層">機械中層</SelectItem>
-                  <SelectItem value="機械下層">機械下層</SelectItem>
-                  <SelectItem value="機械平移">機械平移</SelectItem>
-                  <SelectItem value="機車位">機車位</SelectItem>
-                  <SelectItem value="腳踏車位">腳踏車位</SelectItem>
-                  <SelectItem value="自設">自設車位</SelectItem>
-                  <SelectItem value="法定">法定車位</SelectItem>
+                  <SelectItem value="FLAT">平面車位</SelectItem>
+                  <SelectItem value="MECHANICAL_TOP">機械上層</SelectItem>
+                  <SelectItem value="MECHANICAL_MID">機械中層</SelectItem>
+                  <SelectItem value="MECHANICAL_BOT">機械下層</SelectItem>
+                  <SelectItem value="MECHANICAL_MOVE">機械移動</SelectItem>
+                  <SelectItem value="MOTORCYCLE">機車位</SelectItem>
+                  <SelectItem value="BICYCLE">腳踏車位</SelectItem>
+                  <SelectItem value="SELF_BUILT">自建車位</SelectItem>
+                  <SelectItem value="LEGAL">法定車位</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -533,18 +509,18 @@ export default function ParkingPage() {
                 {parkingSpaces.map((space) => (
                   <TableRow key={space.id}>
                     <TableCell className="font-medium">{space.parkingNo}</TableCell>
-                    <TableCell>{typeLabels[space.type as keyof typeof typeLabels] || space.type}</TableCell>
+                    <TableCell>{TYPE_LABELS[space.type as keyof typeof TYPE_LABELS] || space.type || '-'}</TableCell>
                     <TableCell>{space.location}</TableCell>
                     <TableCell>{formatCurrency(Number(space.price))}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[space.salesStatus as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
-                          {statusLabels[space.salesStatus as keyof typeof statusLabels] || space.salesStatus}
+                      <Badge className={STATUS_COLORS[space.salesStatus as keyof typeof STATUS_COLORS] || 'bg-gray-100 text-gray-800'}>
+                          {STATUS_LABELS[space.salesStatus as keyof typeof STATUS_LABELS] || space.salesStatus}
                       </Badge>
                     </TableCell>
                     <TableCell>{space.buyer || '-'}</TableCell>
-                <TableCell>{salesPersonMap[space.salesId] || space.salesId || '-'}</TableCell>
-                <TableCell>
-                  {space.salesDate ? new Date(space.salesDate).toLocaleDateString('zh-TW') : '-'}
+                    <TableCell>{space.salesId ? salesPersonMap[space.salesId] || space.salesId : '-'}</TableCell>
+                    <TableCell>
+                      {space.salesDate ? new Date(space.salesDate).toLocaleDateString('zh-TW') : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
