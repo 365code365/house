@@ -124,10 +124,10 @@ export default function AppointmentsPage() {
       const response = await fetch(`/api/projects/${projectId}/appointments?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setAppointments(data.appointments || data)
+        setAppointments(data.data || [])
         setPagination(prev => ({
           ...prev,
-          total: data.total || data.length
+          total: data.pagination?.total || 0
         }))
       } else {
         toast.error('獲取預約數據失敗')

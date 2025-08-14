@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     `
     
     const countResult = await executeQuery(countQuery, queryParams) as any[]
-    const total = countResult[0]?.total || 0
+    const total = Number(countResult[0]?.total || 0)
     
     // 計算分頁
     const offset = (page - 1) * pageSize

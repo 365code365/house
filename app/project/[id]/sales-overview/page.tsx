@@ -46,7 +46,8 @@ export default function SalesOverviewPage() {
         throw new Error('获取销售数据失败')
       }
       
-      const salesData: SalesControlData[] = await response.json()
+      const responseData = await response.json()
+      const salesData: SalesControlData[] = responseData.data || []
       const overviewData = processSalesData(salesData)
       setData(overviewData)
     } catch (err) {

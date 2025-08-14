@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Card, Table, Button, Space, Modal, Form, Input, InputNumber, Select, DatePicker, message, Popconfirm } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ExportOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Space, Modal, Form, Input, InputNumber, Select, DatePicker, message, Popconfirm, Dropdown } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ExportOutlined, DownOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import CommonPDFConfig, { defaultConfig } from '@/components/common/CommonPDFConfig'
+import CommonPDFPreviewModal from '@/components/common/CommonPDFPreviewModal'
+import BudgetPDFTemplate from '@/components/budget/BudgetPDFTemplate'
+import * as XLSX from 'xlsx'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
@@ -51,6 +55,11 @@ export default function BudgetPage() {
     pageSize: 10,
     total: 0
   })
+  
+  // PDF导出相关状态
+  const [showPDFConfig, setShowPDFConfig] = useState(false)
+  const [showPDFPreview, setShowPDFPreview] = useState(false)
+  const [pdfConfig, setPdfConfig] = useState(defaultConfig)
 
   // 模拟数据
   const mockData: BudgetItem[] = [
@@ -98,50 +107,23 @@ export default function BudgetPage() {
       category: '業務推廣',
       item: '推廣活動',
       budget: 99750,
-      actualExpense: 99750,
+      actualExpense: 85000,
       quantity: 1,
       unit: '式',
       unitPrice: 99750,
-      vendor: '活動公司',
-      executionRate: 100,
+      vendor: '活動策劃公司',
+      executionRate: 85,
       remark: '開盤活動'
-    },
-    {
-      id: 5,
-      category: '人員薪資',
-      item: '銷售人員',
-      budget: 25000,
-      actualExpense: 25000,
-      quantity: 1,
-      unit: '月',
-      unitPrice: 25000,
-      vendor: '內部',
-      executionRate: 100,
-      remark: '銷售團隊薪資'
-    },
-    {
-      id: 6,
-      category: '其他支出',
-      item: '雜項費用',
-      budget: 25000,
-      actualExpense: 20000,
-      quantity: 1,
-      unit: '式',
-      unitPrice: 20000,
-      vendor: '各廠商',
-      executionRate: 80,
-      remark: '其他必要支出'
     }
   ]
 
   useEffect(() => {
-    // 模拟数据加载
+    // 模拟API调用
     setTimeout(() => {
       setBudgetData(mockData)
-      setPagination(prev => ({ ...prev, total: mockData.length }))
       setLoading(false)
     }, 1000)
-  }, [projectId, pagination.page, pagination.pageSize])
+  }, [])
 
   const handlePaginationChange = (page: number, pageSize?: number) => {
     setPagination(prev => ({
@@ -215,6 +197,51 @@ export default function BudgetPage() {
       message.error('操作失敗')
     }
   }
+
+  // Excel导出
+  const exportToExcel = () => {
+    try {
+      const exportData = budgetData.map(item => ({
+        '類別': item.category,
+        '項目': item.item,
+        '預算': item.budget,
+        '實際支出': item.actualExpense,
+        '數量': item.quantity,
+        '單位': item.unit,
+        '單價': item.unitPrice,
+        '供應商': item.vendor,
+        '執行率': `${item.executionRate}%`,
+        '備註': item.remark
+      }))
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '預算數據')
+      
+      const fileName = `預算數據_${new Date().toISOString().split('T')[0]}.xlsx`
+      XLSX.writeFile(workbook, fileName)
+      
+      message.success('Excel導出成功')
+    } catch (error) {
+      console.error('Excel導出錯誤:', error)
+      message.error('Excel導出失敗')
+    }
+  }
+
+  const exportMenuItems = [
+    {
+      key: 'excel',
+      label: 'Excel格式',
+      icon: <FileExcelOutlined />,
+      onClick: exportToExcel
+    },
+    {
+      key: 'pdf',
+      label: 'PDF格式',
+      icon: <FilePdfOutlined />,
+      onClick: () => setShowPDFConfig(true)
+    }
+  ]
 
   const columns = [
     {
@@ -317,30 +344,37 @@ export default function BudgetPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">預算規劃</h1>
-        <p className="text-gray-600">須具備新增預算功能</p>
-      </div>
+      <Card title="預算管理" className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center space-x-4">
+            <RangePicker
+              value={dateRange}
+              onChange={(dates) => dates && setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs])}
+              className="w-64"
+            />
+          </div>
+          <Space>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditingItem(null)
+                form.resetFields()
+                setIsModalVisible(true)
+              }}
+            >
+              新增預算項目
+            </Button>
+            
+            <Dropdown menu={{ items: exportMenuItems }}>
+              <Button icon={<ExportOutlined />}>
+                導出數據 <DownOutlined />
+              </Button>
+            </Dropdown>
+          </Space>
+        </div>
 
-      {/* 工具栏 */}
-      <div className="mb-6">
-        <Space>
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs])}
-            format="YYYY/MM/DD"
-          />
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增預算
-          </Button>
-          <Button icon={<ExportOutlined />}>
-            匯出
-          </Button>
-        </Space>
-      </div>
-
-      {/* 数据表格 */}
-      <Card>
+        {/* 数据表格 */}
         <Table
           columns={columns}
           dataSource={budgetData}
@@ -470,6 +504,29 @@ export default function BudgetPage() {
           </Form.Item>
         </Form>
       </Modal>
+      
+      {/* PDF配置模态框 */}
+      <CommonPDFConfig
+        visible={showPDFConfig}
+        onCancel={() => setShowPDFConfig(false)}
+        onConfirm={(config) => {
+          setPdfConfig(config)
+          setShowPDFConfig(false)
+          setShowPDFPreview(true)
+        }}
+        initialConfig={pdfConfig}
+        title="預算報表配置"
+      />
+      
+      {/* PDF预览模态框 */}
+      <CommonPDFPreviewModal
+        visible={showPDFPreview}
+        onCancel={() => setShowPDFPreview(false)}
+        data={budgetData}
+        template={BudgetPDFTemplate}
+        config={pdfConfig}
+        title="預算報表預覽"
+      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -63,10 +63,10 @@ export default function ParkingPage() {
       const response = await fetch(`/api/projects/${projectId}/parking?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setParkingSpaces(data.items || data)
+        setParkingSpaces(data.data || [])
         setPagination(prev => ({
           ...prev,
-          total: data.total || data.length
+          total: data.pagination?.total || 0
         }))
       }
     } catch (error) {
@@ -207,8 +207,8 @@ export default function ParkingPage() {
     '法定': '法定車位',
   }
 
-  // 統計數據
-  const stats = {
+  // 統計數據 - 使用useMemo優化性能
+  const stats = useMemo(() => ({
     total: parkingSpaces.length,
     available: parkingSpaces.filter(s => s.salesStatus === 'AVAILABLE').length,
     reserved: parkingSpaces.filter(s => s.salesStatus === 'DEPOSIT').length,
@@ -216,7 +216,7 @@ export default function ParkingPage() {
     totalRevenue: parkingSpaces
       .filter(s => s.salesStatus === 'SOLD')
       .reduce((sum, s) => sum + Number(s.price), 0),
-  }
+  }), [parkingSpaces])
 
   if (loading) {
     return (
