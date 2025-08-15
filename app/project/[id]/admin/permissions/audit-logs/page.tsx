@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -77,7 +77,7 @@ const AuditLogsPage: React.FC = () => {
   const [retentionDays, setRetentionDays] = useState(90);
 
   // 獲取審計日誌列表
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -97,15 +97,15 @@ const AuditLogsPage: React.FC = () => {
       if (!response.ok) throw new Error('獲取審計日誌失敗');
       
       const result = await response.json();
-      setLogs(result.data.logs);
+      setLogs(result.data.logs || []);
       setStats(result.data.stats);
-      setPagination(prev => ({ ...prev, total: result.data.pagination.total }));
+      setPagination(prev => ({ ...prev, total: result.data.pagination?.total || 0 }));
     } catch (error) {
       message.error('獲取審計日誌失敗');
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.current, pagination.pageSize, searchText, selectedAction, selectedResourceType, selectedUserId, dateRange]);
 
   // 清理舊日誌
   const handleCleanupLogs = async () => {
@@ -163,7 +163,7 @@ const AuditLogsPage: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [pagination.current, pagination.pageSize]);
+  }, [fetchLogs]);
 
   // 操作類型顏色映射
   const getActionColor = (action: string) => {
@@ -290,7 +290,7 @@ const AuditLogsPage: React.FC = () => {
             <Card>
               <Statistic
                 title="總日誌數"
-                value={stats.totalLogs}
+                value={stats.totalLogs || 0}
                 prefix={<BarChartOutlined />}
               />
             </Card>
@@ -299,7 +299,7 @@ const AuditLogsPage: React.FC = () => {
             <Card>
               <Statistic
                 title="今日操作"
-                value={stats.todayLogs}
+                value={stats.todayLogs || 0}
                 valueStyle={{ color: '#3f8600' }}
               />
             </Card>
@@ -308,7 +308,7 @@ const AuditLogsPage: React.FC = () => {
             <Card>
               <Statistic
                 title="活躍用戶"
-                value={stats.userStats.length}
+                value={stats.userStats?.length || 0}
                 valueStyle={{ color: '#1890ff' }}
               />
             </Card>
@@ -317,7 +317,7 @@ const AuditLogsPage: React.FC = () => {
             <Card>
               <Statistic
                 title="操作類型"
-                value={stats.actionStats.length}
+                value={stats.actionStats?.length || 0}
                 valueStyle={{ color: '#722ed1' }}
               />
             </Card>
