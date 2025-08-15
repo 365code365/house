@@ -11,6 +11,7 @@ const routePermissions = {
     '/login',
     '/auth/error',
     '/api/auth',
+    '/api/auth/*',
     '/_next',
     '/favicon.ico'
   ],

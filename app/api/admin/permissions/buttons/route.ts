@@ -1,67 +1,103 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { successResponse, errorResponse } from '@/lib/api-response';
-import { withApiAuth } from '@/lib/auth-utils';
 import { UserRole } from '@prisma/client';
+import { withApiAuth } from '@/lib/auth-utils';
+import { successResponse, errorResponse } from '@/lib/api-response';
 
-// GET /api/admin/permissions/buttons - 獲取按鈕權限列表
+// 獲取按鈕權限配置
 export async function GET(request: NextRequest) {
-  return withApiAuth(request, [UserRole.SUPER_ADMIN], async (user) => {
-    try {
-      const { searchParams } = new URL(request.url);
-      const page = parseInt(searchParams.get('page') || '1');
-      const pageSize = parseInt(searchParams.get('pageSize') || '10');
-      const search = searchParams.get('search') || '';
-      const category = searchParams.get('category');
-      const roleId = searchParams.get('roleId');
-      const includePermissions = searchParams.get('includePermissions') === 'true';
-
-      const skip = (page - 1) * pageSize;
-
-      // 構建查詢條件
-      const where: any = {};
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { identifier: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
-        ];
-      }
-
-      // 獲取按鈕權限列表和總數
-      const [buttonPermissions, total] = await Promise.all([
-        prisma.buttonPermission.findMany({
-          where,
-          skip,
-          take: pageSize,
-          orderBy: [{ menuId: 'asc' }, { name: 'asc' }],
-          include: {
-            ...(includePermissions && {
-              rolePermissions: roleId ? {
-                where: { roleId: parseInt(roleId) }
-              } : true
-            })
-          }
-        }),
-        prisma.buttonPermission.count({ where })
-      ]);
-
-      const totalPages = Math.ceil(Number(total) / pageSize);
-
-      return successResponse({
-        data: buttonPermissions,
-        pagination: {
-          total: Number(total),
-          page,
-          pageSize,
-          totalPages
-        }
-      });
-    } catch (error) {
-      console.error('獲取按鈕權限列表失敗:', error);
-      return errorResponse('獲取按鈕權限列表失敗', 500);
+  try {
+    // 獲取session
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: '未授權訪問' },
+        { status: 401 }
+      );
     }
-  });
+    
+    // 檢查用戶角色
+    if (session.user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.json(
+        { error: '權限不足' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const menuId = searchParams.get('menuId') || '';
+    const roleFilter = searchParams.get('role') || '';
+    
+    const skip = (page - 1) * limit;
+    
+    // 構建查詢條件
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { code: { contains: search } },
+        { description: { contains: search } }
+      ];
+    }
+    
+    if (menuId) {
+      where.menuId = parseInt(menuId);
+    }
+    
+    // 獲取按鈕列表
+    const [buttons, total] = await Promise.all([
+      prisma.button.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          menu: {
+            select: {
+              id: true,
+              name: true,
+              path: true
+            }
+          }
+        }
+      }),
+      prisma.button.count({ where })
+    ]);
+    
+    // 如果有角色篩選，獲取該角色的按鈕權限
+    let roleButtons: any[] = [];
+    if (roleFilter) {
+      const roleButtonPermissions = await prisma.roleButtonPermission.findMany({
+        where: { role: roleFilter as UserRole },
+        include: { button: true }
+      });
+      roleButtons = roleButtonPermissions.map(rbp => rbp.button);
+    }
+    
+    return NextResponse.json({
+      data: buttons,
+      pagination: {
+        page,
+        limit,
+        total: Number(total),
+        pages: Math.ceil(Number(total) / limit)
+      },
+      roleButtons: roleFilter ? roleButtons : undefined
+    });
+  } catch (error) {
+    console.error('獲取按鈕權限配置失敗:', error);
+    return NextResponse.json(
+      { error: '獲取按鈕權限配置失敗' },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/admin/permissions/buttons - 創建新按鈕權限

@@ -200,7 +200,7 @@ export async function checkMenuPermission(
     const roleMenuPermission = await prisma.roleMenuPermission.findFirst({
       where: {
         role: {
-          name: user.role
+          name: user.role.toString()
         },
         menu: {
           name: menuName
@@ -234,7 +234,7 @@ export async function checkButtonPermission(
     const roleButtonPermission = await prisma.roleButtonPermission.findFirst({
       where: {
         role: {
-          name: user.role
+          name: user.role.toString()
         },
         button: {
           name: buttonName
@@ -284,7 +284,7 @@ export async function getUserPermissions(userId: number): Promise<{
     
     // 查詢角色對應的權限
     const role = await prisma.role.findUnique({
-      where: { name: user.role },
+      where: { name: user.role.toString() },
       include: {
         menuPermissions: {
           include: {
@@ -317,37 +317,13 @@ export async function getUserPermissions(userId: number): Promise<{
   }
 }
 
-// API權限中間件包裝器（重載版本）
-export function withApiAuth(
+// API權限中間件包裝器（簡化版本）
+export async function withApiAuth(
   request: NextRequest,
   requiredRoles: UserRole[],
   handler: (user: any) => Promise<Response>
-): Promise<Response>
-export function withApiAuth(requiredRoles?: UserRole[]): (request: NextRequest) => Promise<any>
-export function withApiAuth(
-  requestOrRoles?: NextRequest | UserRole[],
-  requiredRolesOrHandler?: UserRole[] | ((user: any) => Promise<Response>),
-  handler?: (user: any) => Promise<Response>
-): any {
-  // 新的重載：直接執行處理器
-  if (requestOrRoles instanceof NextRequest && Array.isArray(requiredRolesOrHandler) && handler) {
-    return (async () => {
-      const authResult = await checkApiPermission(requestOrRoles, requiredRolesOrHandler)
-      
-      if (!authResult.authorized) {
-        return Response.json(
-          { error: authResult.error || '權限不足' },
-          { status: authResult.user ? 403 : 401 }
-        )
-      }
-      
-      return handler(authResult.user)
-    })()
-  }
-  
-  // 原有的重載：返回中間件函數
-  const requiredRoles = Array.isArray(requestOrRoles) ? requestOrRoles : requiredRolesOrHandler as UserRole[]
-  return async function(request: NextRequest) {
+): Promise<Response> {
+  try {
     const authResult = await checkApiPermission(request, requiredRoles)
     
     if (!authResult.authorized) {
@@ -357,7 +333,13 @@ export function withApiAuth(
       )
     }
     
-    return authResult.user
+    return await handler(authResult.user)
+  } catch (error) {
+    console.error('withApiAuth error:', error)
+    return Response.json(
+      { error: '服務器內部錯誤' },
+      { status: 500 }
+    )
   }
 }
 

@@ -189,6 +189,12 @@ export default function UserPermissions() {
 
   // 搜索和篩選
   useEffect(() => {
+    // 確保users是數組類型
+    if (!Array.isArray(users)) {
+      setFilteredUsers([])
+      return
+    }
+    
     let filtered = users
     
     if (searchText) {
@@ -298,10 +304,13 @@ export default function UserPermissions() {
   // 獲取角色統計
   const getRoleStats = () => {
     const stats: { [key: string]: number } = {}
-    users.forEach(user => {
-      const roleDisplay = user.roleInfo?.displayName || user.role
-      stats[roleDisplay] = (stats[roleDisplay] || 0) + 1
-    })
+    // 確保users是數組類型
+    if (Array.isArray(users)) {
+      users.forEach(user => {
+        const roleDisplay = user.roleInfo?.displayName || user.role
+        stats[roleDisplay] = (stats[roleDisplay] || 0) + 1
+      })
+    }
     return stats
   }
 
@@ -328,7 +337,7 @@ export default function UserPermissions() {
           {record.roleInfo?.displayName || role}
         </Tag>
       ),
-      filters: roles.map(role => ({ text: role.displayName, value: role.name })),
+      filters: Array.isArray(roles) ? roles.map(role => ({ text: role.displayName, value: role.name })) : [],
       onFilter: (value, record) => record.role === value
     },
     {
@@ -402,7 +411,7 @@ export default function UserPermissions() {
                         rules={[{ required: true, message: '請選擇角色' }]}
                       >
                         <Select placeholder="選擇角色">
-                          {roles.map(role => (
+                          {Array.isArray(roles) && roles.map(role => (
                             <Option key={role.name} value={role.name}>
                               {role.displayName}
                             </Option>
@@ -427,7 +436,7 @@ export default function UserPermissions() {
                           placeholder="選擇可訪問的項目"
                           allowClear
                         >
-                          {projects.map(project => (
+                          {Array.isArray(projects) && projects.map(project => (
                             <Option key={project.id} value={project.id}>
                               {project.name}
                             </Option>
@@ -483,7 +492,7 @@ export default function UserPermissions() {
           <Card>
             <Statistic
               title="總用戶數"
-              value={users.length}
+              value={Array.isArray(users) ? users.length : 0}
               prefix={<UserOutlined style={{ color: '#1890ff' }} />}
             />
           </Card>
@@ -492,7 +501,7 @@ export default function UserPermissions() {
           <Card>
             <Statistic
               title="啟用用戶"
-              value={users.filter(u => u.isActive).length}
+              value={Array.isArray(users) ? users.filter(u => u.isActive).length : 0}
               prefix={<SafetyOutlined style={{ color: '#52c41a' }} />}
             />
           </Card>
@@ -551,7 +560,7 @@ export default function UserPermissions() {
               onChange={setSelectedRole}
               style={{ width: '100%' }}
             >
-              {roles.map(role => (
+              {Array.isArray(roles) && roles.map(role => (
                 <Option key={role.name} value={role.name}>
                   {role.displayName}
                 </Option>
@@ -575,7 +584,7 @@ export default function UserPermissions() {
         {/* 用戶列表 */}
         <Table
           columns={columns}
-          dataSource={filteredUsers}
+          dataSource={Array.isArray(filteredUsers) ? filteredUsers : []}
           rowKey="id"
           loading={loading}
           rowSelection={{

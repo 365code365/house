@@ -84,7 +84,7 @@ export default function PermissionsLayout({ children }: PermissionsLayoutProps) 
       key: 'audit',
       icon: <AuditOutlined />,
       label: '審計日誌',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions/audit`)
+      onClick: () => router.push(`/project/${projectId}/admin/permissions/audit-logs`)
     }
   ]
 
@@ -95,7 +95,7 @@ export default function PermissionsLayout({ children }: PermissionsLayoutProps) 
     if (pathname.includes('/menus')) return 'menus'
     if (pathname.includes('/buttons')) return 'buttons'
     if (pathname.includes('/users')) return 'users'
-    if (pathname.includes('/audit')) return 'audit'
+    if (pathname.includes('/audit-logs')) return 'audit'
     return 'overview'
   }
 
@@ -116,7 +116,7 @@ export default function PermissionsLayout({ children }: PermissionsLayoutProps) 
       items.push({ title: '按鈕權限' })
     } else if (pathname.includes('/users')) {
       items.push({ title: '用戶權限' })
-    } else if (pathname.includes('/audit')) {
+    } else if (pathname.includes('/audit-logs')) {
       items.push({ title: '審計日誌' })
     } else {
       items.push({ title: '權限概覽' })

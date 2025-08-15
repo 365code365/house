@@ -1,60 +1,94 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { successResponse, errorResponse } from '@/lib/api-response';
-import { withApiAuth } from '@/lib/auth-utils';
 import { UserRole } from '@prisma/client';
+import { withApiAuth } from '@/lib/auth-utils';
+import { successResponse, errorResponse } from '@/lib/api-response';
 
-// GET /api/admin/permissions/menus - 獲取菜單列表（樹狀結構）
+// 獲取菜單權限配置
 export async function GET(request: NextRequest) {
-  return withApiAuth(request, [UserRole.SUPER_ADMIN], async (user) => {
-    try {
-      const { searchParams } = new URL(request.url);
-      const includePermissions = searchParams.get('includePermissions') === 'true';
-      const roleId = searchParams.get('roleId');
-      const flat = searchParams.get('flat') === 'true';
+  try {
+    // 獲取session
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: '未授權訪問' },
+        { status: 401 }
+      );
+    }
+    
+    // 檢查用戶角色
+    if (session.user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.json(
+        { error: '權限不足' },
+        { status: 403 }
+      );
+    }
 
-      // 獲取所有菜單
-      const menus = await prisma.menu.findMany({
-        orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }],
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const roleFilter = searchParams.get('role') || '';
+    
+    const skip = (page - 1) * limit;
+    
+    // 構建查詢條件
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { path: { contains: search } },
+        { component: { contains: search } }
+      ];
+    }
+    
+    // 獲取菜單列表
+    const [menus, total] = await Promise.all([
+      prisma.menu.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { sortOrder: 'asc' },
         include: {
           children: {
             orderBy: { sortOrder: 'asc' }
-          },
-          ...(includePermissions && {
-            rolePermissions: roleId ? {
-              where: { roleId: parseInt(roleId) }
-            } : true
-          })
+          }
         }
+      }),
+      prisma.menu.count({ where })
+    ]);
+    
+    // 如果有角色篩選，獲取該角色的菜單權限
+    let roleMenus: any[] = [];
+    if (roleFilter) {
+      const roleMenuPermissions = await prisma.roleMenuPermission.findMany({
+        where: { role: roleFilter as UserRole },
+        include: { menu: true }
       });
-
-      if (flat) {
-        // 返回扁平化列表
-        return successResponse({
-          data: menus
-        });
-      }
-
-      // 構建樹狀結構
-      const menuTree = menus.filter(menu => !menu.parentId);
-      
-      const buildTree = (parentMenus: any[]): any[] => {
-        return parentMenus.map(menu => ({
-          ...menu,
-          children: buildTree(menus.filter(m => m.parentId === menu.id))
-        }));
-      };
-
-      const treeData = buildTree(menuTree);
-
-      return successResponse({
-        data: treeData
-      });
-    } catch (error) {
-      console.error('獲取菜單列表失敗:', error);
-      return errorResponse('獲取菜單列表失敗', 500);
+      roleMenus = roleMenuPermissions.map(rmp => rmp.menu);
     }
-  });
+    
+    return NextResponse.json({
+      data: menus,
+      pagination: {
+        page,
+        limit,
+        total: Number(total),
+        pages: Math.ceil(Number(total) / limit)
+      },
+      roleMenus: roleFilter ? roleMenus : undefined
+    });
+  } catch (error) {
+    console.error('獲取菜單權限配置失敗:', error);
+    return NextResponse.json(
+      { error: '獲取菜單權限配置失敗' },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/admin/permissions/menus - 創建新菜單

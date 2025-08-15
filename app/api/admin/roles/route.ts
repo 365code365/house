@@ -1,69 +1,84 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { successResponse, errorResponse } from '@/lib/api-response';
-import { withApiAuth } from '@/lib/auth-utils';
 import { UserRole } from '@prisma/client';
+import { withApiAuth } from '@/lib/auth-utils';
+import { successResponse, errorResponse } from '@/lib/api-response';
 
 // GET /api/admin/roles - 獲取所有角色列表
 export async function GET(request: NextRequest) {
-  return withApiAuth(request, [UserRole.SUPER_ADMIN], async (user) => {
-    try {
-      const { searchParams } = new URL(request.url);
-      const page = parseInt(searchParams.get('page') || '1');
-      const pageSize = parseInt(searchParams.get('pageSize') || '10');
-      const search = searchParams.get('search') || '';
-      const isActive = searchParams.get('isActive');
+  try {
+    // 獲取session
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: '未授權訪問' },
+        { status: 401 }
+      );
+    }
+    
+    // 檢查用戶角色
+    if (session.user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.json(
+        { error: '權限不足' },
+        { status: 403 }
+      );
+    }
 
-      const skip = (page - 1) * pageSize;
-
-      // 構建查詢條件
-      const where: any = {};
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { displayName: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
-        ];
-      }
-      if (isActive !== null && isActive !== undefined) {
-        where.isActive = isActive === 'true';
-      }
-
-      // 獲取角色列表和總數
-      const [roles, total] = await Promise.all([
-        prisma.role.findMany({
-          where,
-          skip,
-          take: pageSize,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            _count: {
-              select: {
-                menuPermissions: true,
-                buttonPermissions: true
-              }
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    
+    const skip = (page - 1) * limit;
+    
+    // 構建查詢條件
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { description: { contains: search } }
+      ];
+    }
+    
+    // 獲取角色列表
+    const [roles, total] = await Promise.all([
+      prisma.role.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: {
+              menuPermissions: true,
+              buttonPermissions: true
             }
           }
-        }),
-        prisma.role.count({ where })
-      ]);
-
-      const totalPages = Math.ceil(Number(total) / pageSize);
-
-      return successResponse({
-        data: roles,
-        pagination: {
-          total: Number(total),
-          page,
-          pageSize,
-          totalPages
         }
-      });
-    } catch (error) {
-      console.error('獲取角色列表失敗:', error);
-      return errorResponse('獲取角色列表失敗', 500);
-    }
-  });
+      }),
+      prisma.role.count({ where })
+    ]);
+    
+    return NextResponse.json({
+      data: roles,
+      pagination: {
+        page,
+        limit,
+        total: Number(total),
+        pages: Math.ceil(Number(total) / limit)
+      }
+    });
+  } catch (error) {
+    console.error('獲取角色列表失敗:', error);
+    return NextResponse.json(
+      { error: '獲取角色列表失敗' },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/admin/roles - 創建新角色
