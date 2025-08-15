@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { name: { contains: search } },
-        { code: { contains: search } },
+        { identifier: { contains: search } },
         { description: { contains: search } }
       ];
     }
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     
     // 獲取按鈕列表
     const [buttons, total] = await Promise.all([
-      prisma.button.findMany({
+      prisma.buttonPermission.findMany({
         where,
         skip,
         take: limit,
@@ -68,14 +68,14 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
-      prisma.button.count({ where })
+      prisma.buttonPermission.count({ where })
     ]);
     
     // 如果有角色篩選，獲取該角色的按鈕權限
     let roleButtons: any[] = [];
     if (roleFilter) {
       const roleButtonPermissions = await prisma.roleButtonPermission.findMany({
-        where: { role: roleFilter as UserRole },
+        where: { roleId: parseInt(roleFilter) },
         include: { button: true }
       });
       roleButtons = roleButtonPermissions.map(rbp => rbp.button);
