@@ -85,7 +85,7 @@ const getMenuItems = (projectId: string): MenuItem[] => [
     {
         key: 'questionnaire',
         icon: <FileTextOutlined/>,
-        label: <Link href={`/project/${projectId}/questionnaire`}>訪客問卷</Link>,
+        label: <Link href={`/project/${projectId}/visitor-questionnaire`}>訪客問卷</Link>,
     },
     {
         key: 'financial',
