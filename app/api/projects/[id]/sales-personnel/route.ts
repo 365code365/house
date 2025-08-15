@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // GET - 獲取項目的銷售人員數據
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
   try {
     const projectId = parseInt(params.id)
     
@@ -89,10 +90,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     console.error('獲取銷售人員數據失敗:', error)
     return NextResponse.json({ error: '獲取銷售人員數據失敗' }, { status: 500 })
   }
-}
+});
 
 // POST - 創建新的銷售人員
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
   try {
     const projectId = parseInt(params.id)
     const body = await request.json()
@@ -101,14 +102,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       employee_no,
       name,
       email,
-      password,
       phone,
       remark
     } = body
     
     // 驗證必填字段
-    if (!employee_no || !name || !email || !password) {
-      return NextResponse.json({ error: '員工編號、姓名、郵箱和密碼為必填項' }, { status: 400 })
+    if (!employee_no || !name || !email) {
+      return NextResponse.json({ error: '員工編號、姓名和郵箱為必填項' }, { status: 400 })
     }
     
     // 檢查員工編號是否已存在
@@ -129,8 +129,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: '郵箱已存在' }, { status: 400 })
     }
     
-    // 加密密碼
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // 生成默認密碼（員工編號）
+    const defaultPassword = await bcrypt.hash(employee_no, 10)
     
     // 創建新的銷售人員
     const newSalesPersonnel = await prisma.salesPersonnel.create({
@@ -138,30 +138,27 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         employeeNo: employee_no,
         name,
         email,
-        password: hashedPassword,
+        password: defaultPassword,
         phone: phone || null,
         projectIds: projectId.toString(),
         remark: remark || null
       }
     })
     
-    // 返回創建的記錄（不包含密碼）
-    const { password: _, ...result } = newSalesPersonnel
-    
+    // 返回創建的記錄
     return NextResponse.json({
-      id: result.id,
-      employee_no: result.employeeNo,
-      name: result.name,
-      email: result.email,
-      phone: result.phone,
-      project_ids: result.projectIds,
-      remark: result.remark,
-      created_at: result.createdAt,
-      updated_at: result.updatedAt
+      id: newSalesPersonnel.id,
+      employee_no: newSalesPersonnel.employeeNo,
+      name: newSalesPersonnel.name,
+      email: newSalesPersonnel.email,
+      phone: newSalesPersonnel.phone,
+      project_ids: newSalesPersonnel.projectIds,
+      remark: newSalesPersonnel.remark,
+      created_at: newSalesPersonnel.createdAt,
+      updated_at: newSalesPersonnel.updatedAt
     }, { status: 201 })
-    
   } catch (error) {
     console.error('創建銷售人員失敗:', error)
     return NextResponse.json({ error: '創建銷售人員失敗' }, { status: 500 })
   }
-}
+});

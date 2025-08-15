@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
+import { UserRole } from '@prisma/client'
 
 // 獲取建案統計數據
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const projectId = parseInt(params.id)
+export const GET = createProtectedApiHandler(
+  async (request: NextRequest, user: any) => {
+    const url = new URL(request.url)
+    const pathSegments = url.pathname.split('/')
+    const projectId = parseInt(pathSegments[3]) // /api/projects/[id]/stats
+    
+    try {
     
     if (isNaN(projectId)) {
       return NextResponse.json(
@@ -80,10 +83,12 @@ export async function GET(
 
     return NextResponse.json(stats)
   } catch (error) {
-    console.error('獲取建案統計失敗:', error)
+    console.error('獲取建案統計數據失敗:', error)
     return NextResponse.json(
-      { message: '獲取建案統計失敗' },
+      { message: '獲取統計數據失敗' },
       { status: 500 }
     )
   }
-}
+  },
+  [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SALES_MANAGER]
+)

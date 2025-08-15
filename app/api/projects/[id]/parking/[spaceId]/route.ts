@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // 停車位類型映射：中文 -> 枚舉值
 const PARKING_TYPE_MAPPING: Record<string, string> = {
@@ -49,7 +50,7 @@ function mapParkingStatus(frontendStatus: string): string {
 }
 
 // PUT - 更新停車位
-export const PUT = withErrorHandler(async (
+export const PUT = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; spaceId: string } }
 ) => {
@@ -125,13 +126,13 @@ export const PUT = withErrorHandler(async (
   })
   
   return createSuccessResponse({ message: '停車位已更新' })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'])
 
 // DELETE - 刪除停車位
-export async function DELETE(
+export const DELETE = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; spaceId: string } }
-) {
+) => {
   try {
     const { id: projectId, spaceId } = params
     
@@ -163,13 +164,13 @@ export async function DELETE(
     console.error('刪除停車位失敗:', error)
     return NextResponse.json({ error: '刪除停車位失敗' }, { status: 500 })
   }
-}
+}, ['SUPER_ADMIN', 'ADMIN'])
 
 // GET - 獲取單個停車位詳情
-export async function GET(
+export const GET = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; spaceId: string } }
-) {
+) => {
   try {
     const { id: projectId, spaceId } = params
     
@@ -204,4 +205,4 @@ export async function GET(
     console.error('獲取停車位詳情失敗:', error)
     return NextResponse.json({ error: '獲取停車位詳情失敗' }, { status: 500 })
   }
-}
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON'])

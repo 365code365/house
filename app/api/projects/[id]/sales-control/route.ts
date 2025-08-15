@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { SalesControl } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createNotFoundError, createValidationError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // GET - 獲取項目的銷控數據
-export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const building = searchParams.get('building')
@@ -197,10 +198,10 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       total: Number(total),
       totalPages: Math.ceil(Number(total) / pageSize)
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON'])
 
 // POST - 創建新的銷控記錄
-export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const body = await request.json()
     const {
@@ -325,4 +326,4 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     }
     
     return createSuccessResponse(responseData, undefined, 201)
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'])

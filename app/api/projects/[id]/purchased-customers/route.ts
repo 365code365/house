@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { PurchasedCustomer } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // GET - 獲取項目的已購客戶數據
-export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
@@ -103,10 +104,10 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       total: Number(total),
       totalPages: Math.ceil(Number(total) / pageSize)
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON', 'CUSTOMER_SERVICE'])
 
 // POST - 創建新的已購客戶記錄
-export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const body = await request.json()
     const {
@@ -214,10 +215,10 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     }
     
     return createSuccessResponse(responseData, undefined, 201)
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'CUSTOMER_SERVICE'])
 
 // PUT - 批量更新已購客戶記錄
-export const PUT = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const PUT = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const body = await request.json()
     const { ids, updates } = body
@@ -255,10 +256,10 @@ export const PUT = withErrorHandler(async (request: NextRequest, { params }: { p
       message: `成功更新 ${result.count} 條記錄`,
       updatedCount: result.count
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'CUSTOMER_SERVICE'])
 
 // DELETE - 批量刪除已購客戶記錄
-export const DELETE = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const DELETE = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const idsParam = searchParams.get('ids')
@@ -294,4 +295,4 @@ export const DELETE = withErrorHandler(async (request: NextRequest, { params }: 
       message: `成功刪除 ${result.count} 條記錄`,
       deletedCount: result.count
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'])

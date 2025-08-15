@@ -24,30 +24,19 @@ const ImportExportActions: React.FC<ImportExportActionsProps> = ({
     try {
       const exportData = data.map(item => ({
         '客戶姓名': item.customerName,
-        '聯絡電話': item.contactPhone,
+        '聯絡電話': item.phone || '',
         '電子郵件': item.email || '',
-        '合約編號': item.contractNumber,
         '房號': item.houseNo,
-        '房型': item.houseType,
-        '購買日期': new Date(item.purchaseDate).toLocaleDateString('zh-TW'),
-        '總金額': item.totalAmount,
-        '已付金額': item.paidAmount,
-        '剩餘金額': item.remainingAmount,
-        '付款狀態': item.paymentStatus === 'COMPLETED' ? '已完成' :
-                   item.paymentStatus === 'PARTIAL' ? '部分付款' : '待付款',
-        '貸款狀態': item.loanStatus === 'APPROVED' ? '已核准' :
-                   item.loanStatus === 'APPLIED' ? '已申請' :
-                   item.loanStatus === 'REJECTED' ? '已拒絕' : '未申請',
-        '合約狀態': item.contractStatus === 'SIGNED' ? '已簽約' :
-                   item.contractStatus === 'PENDING' ? '待簽約' : '已取消',
-        '交房狀態': item.handoverStatus === 'COMPLETED' ? '已交房' :
-                   item.handoverStatus === 'SCHEDULED' ? '已排程' : '未交房',
-        '交房日期': item.handoverDate ? new Date(item.handoverDate).toLocaleDateString('zh-TW') : '',
-        '銷售人員ID': item.salesPersonId || '',
-        '客戶評級': item.rating,
+        '購買日期': item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('zh-TW') : '',
+        '身分證號': item.idCard || '',
+        '是否法人': item.isCorporate ? '是' : '否',
+        '年齡': item.age || '',
+        '職業': item.occupation || '',
+        '戶籍地址': item.registeredAddress || '',
         '郵寄地址': item.mailingAddress || '',
-        '最後聯絡日期': item.lastContactDate ? new Date(item.lastContactDate).toLocaleDateString('zh-TW') : '',
-        '下次跟進日期': item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString('zh-TW') : '',
+        '銷售人員ID': item.salesPersonId || '',
+        '銷售人員': item.salesPerson || '',
+        '客戶評級': item.rating || '',
         '備註': item.remark || '',
         '創建時間': new Date(item.createdAt).toLocaleDateString('zh-TW'),
         '更新時間': new Date(item.updatedAt).toLocaleDateString('zh-TW')
@@ -62,23 +51,17 @@ const ImportExportActions: React.FC<ImportExportActionsProps> = ({
         { wch: 12 }, // 客戶姓名
         { wch: 15 }, // 聯絡電話
         { wch: 20 }, // 電子郵件
-        { wch: 15 }, // 合約編號
         { wch: 10 }, // 房號
-        { wch: 15 }, // 房型
         { wch: 12 }, // 購買日期
-        { wch: 12 }, // 總金額
-        { wch: 12 }, // 已付金額
-        { wch: 12 }, // 剩餘金額
-        { wch: 10 }, // 付款狀態
-        { wch: 10 }, // 貸款狀態
-        { wch: 10 }, // 合約狀態
-        { wch: 10 }, // 交房狀態
-        { wch: 12 }, // 交房日期
-        { wch: 12 }, // 銷售人員ID
-        { wch: 8 },  // 客戶評級
+        { wch: 15 }, // 身分證號
+        { wch: 10 }, // 是否法人
+        { wch: 8 },  // 年齡
+        { wch: 15 }, // 職業
+        { wch: 25 }, // 戶籍地址
         { wch: 25 }, // 郵寄地址
-        { wch: 12 }, // 最後聯絡日期
-        { wch: 12 }, // 下次跟進日期
+        { wch: 12 }, // 銷售人員ID
+        { wch: 12 }, // 銷售人員
+        { wch: 8 },  // 客戶評級
         { wch: 20 }, // 備註
         { wch: 12 }, // 創建時間
         { wch: 12 }  // 更新時間
@@ -102,30 +85,19 @@ const ImportExportActions: React.FC<ImportExportActionsProps> = ({
     try {
       const exportData = data.map(item => ({
         '客戶姓名': item.customerName,
-        '聯絡電話': item.contactPhone,
+        '聯絡電話': item.phone || '',
         '電子郵件': item.email || '',
-        '合約編號': item.contractNumber,
         '房號': item.houseNo,
-        '房型': item.houseType,
-        '購買日期': new Date(item.purchaseDate).toLocaleDateString('zh-TW'),
-        '總金額': item.totalAmount,
-        '已付金額': item.paidAmount,
-        '剩餘金額': item.remainingAmount,
-        '付款狀態': item.paymentStatus === 'COMPLETED' ? '已完成' :
-                   item.paymentStatus === 'PARTIAL' ? '部分付款' : '待付款',
-        '貸款狀態': item.loanStatus === 'APPROVED' ? '已核准' :
-                   item.loanStatus === 'APPLIED' ? '已申請' :
-                   item.loanStatus === 'REJECTED' ? '已拒絕' : '未申請',
-        '合約狀態': item.contractStatus === 'SIGNED' ? '已簽約' :
-                   item.contractStatus === 'PENDING' ? '待簽約' : '已取消',
-        '交房狀態': item.handoverStatus === 'COMPLETED' ? '已交房' :
-                   item.handoverStatus === 'SCHEDULED' ? '已排程' : '未交房',
-        '交房日期': item.handoverDate ? new Date(item.handoverDate).toLocaleDateString('zh-TW') : '',
-        '銷售人員ID': item.salesPersonId || '',
-        '客戶評級': item.rating,
+        '購買日期': item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('zh-TW') : '',
+        '身分證號': item.idCard || '',
+        '是否法人': item.isCorporate ? '是' : '否',
+        '年齡': item.age || '',
+        '職業': item.occupation || '',
+        '戶籍地址': item.registeredAddress || '',
         '郵寄地址': item.mailingAddress || '',
-        '最後聯絡日期': item.lastContactDate ? new Date(item.lastContactDate).toLocaleDateString('zh-TW') : '',
-        '下次跟進日期': item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString('zh-TW') : '',
+        '銷售人員ID': item.salesPersonId || '',
+        '銷售人員': item.salesPerson || '',
+        '客戶評級': item.rating || '',
         '備註': item.remark || '',
         '創建時間': new Date(item.createdAt).toLocaleDateString('zh-TW'),
         '更新時間': new Date(item.updatedAt).toLocaleDateString('zh-TW')

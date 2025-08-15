@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // GET - 獲取項目的預算數據
-export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
@@ -62,10 +63,10 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       total,
       totalPages
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'FINANCE'])
 
 // POST - 創建新的預算記錄
-export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const body = await request.json()
     const {
@@ -111,4 +112,4 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     })
     
     return createSuccessResponse(newRecord, undefined, 201)
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'FINANCE'])

@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db'
 import { PrismaClient } from '@prisma/client'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 const prisma = new PrismaClient()
 
 // GET - 獲取項目的預約數據
-export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -86,10 +87,10 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       total,
       totalPages
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON', 'CUSTOMER_SERVICE'])
 
 // POST - 創建新的預約
-export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const body = await request.json()
     
@@ -202,4 +203,4 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     }
     
     throw new Error('創建預約失敗')
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON', 'CUSTOMER_SERVICE'])

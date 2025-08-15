@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // GET - 獲取單個已購客戶詳情
-export const GET = withErrorHandler(async (
+export const GET = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; customerId: string } }
 ) => {
@@ -58,10 +59,10 @@ export const GET = withErrorHandler(async (
   }
   
   return createSuccessResponse(formattedCustomer)
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON', 'CUSTOMER_SERVICE'])
 
 // PUT - 更新單個已購客戶記錄
-export const PUT = withErrorHandler(async (
+export const PUT = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; customerId: string } }
 ) => {
@@ -181,10 +182,10 @@ export const PUT = withErrorHandler(async (
   }
   
   return createSuccessResponse(responseData)
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'CUSTOMER_SERVICE'])
 
 // DELETE - 刪除單個已購客戶記錄
-export const DELETE = withErrorHandler(async (
+export const DELETE = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string; customerId: string } }
 ) => {
@@ -218,4 +219,4 @@ export const DELETE = withErrorHandler(async (
   })
   
   return createSuccessResponse({ message: '已購客戶記錄刪除成功' })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'])

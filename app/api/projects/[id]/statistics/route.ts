@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // 獲取建案統計數據
-export async function GET(
+export const GET = createProtectedApiHandler(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
@@ -158,9 +159,6 @@ export async function GET(
     return NextResponse.json(statistics)
   } catch (error) {
     console.error('獲取統計數據失敗:', error)
-    return NextResponse.json(
-      { message: '獲取統計數據失敗' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: '獲取統計數據失敗' }, { status: 500 })
   }
-}
+});

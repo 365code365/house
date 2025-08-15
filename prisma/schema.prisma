@@ -779,3 +779,58 @@ enum HandoverManagementStatus {
   /// 点交延期
   DELAYED     @map("延期")
 }
+
+/// 用户角色枚举
+enum UserRole {
+  /// 超级管理员
+  SUPER_ADMIN @map("超級管理員")
+  /// 管理员
+  ADMIN       @map("管理員")
+  /// 销售经理
+  SALES_MANAGER @map("銷售經理")
+  /// 销售人员
+  SALES_PERSON @map("銷售人員")
+  /// 财务人员
+  FINANCE     @map("財務人員")
+  /// 客服人员
+  CUSTOMER_SERVICE @map("客服人員")
+  /// 普通用户
+  USER        @map("普通用戶")
+}
+
+/// 用户模型
+/// 存储系统用户的基本信息和权限
+model User {
+  /// 用户ID，主键，自增
+  id        Int      @id @default(autoincrement())
+  /// 用户名，唯一
+  username  String   @unique @db.VarChar(50)
+  /// 用户邮箱，唯一
+  email     String   @unique @db.VarChar(100)
+  /// 用户密码（加密后）
+  password  String   @db.VarChar(255)
+  /// 用户真实姓名
+  name      String   @db.VarChar(100)
+  /// 用户角色
+  role      UserRole @default(USER)
+  /// 用户头像URL（可选）
+  avatar    String?  @db.VarChar(255)
+  /// 联系电话（可选）
+  phone     String?  @db.VarChar(20)
+  /// 部门（可选）
+  department String? @db.VarChar(100)
+  /// 职位（可选）
+  position  String?  @db.VarChar(100)
+  /// 可访问的项目ID列表，逗号分隔（可选）
+  projectIds String? @map("project_ids") @db.VarChar(255)
+  /// 账户是否激活
+  isActive  Boolean  @default(true) @map("is_active")
+  /// 最后登录时间（可选）
+  lastLoginAt DateTime? @map("last_login_at")
+  /// 创建时间
+  createdAt DateTime @default(now()) @map("created_at")
+  /// 最后更新时间
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("user")
+}

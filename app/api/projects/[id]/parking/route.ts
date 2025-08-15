@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { ParkingSpace } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createValidationError, createNotFoundError } from '@/lib/error-handler'
+import { createProtectedApiHandler } from '@/lib/auth-utils'
 
 // 停車位類型映射：中文 -> 枚舉值
 const PARKING_TYPE_MAPPING: Record<string, string> = {
@@ -33,7 +34,7 @@ function mapParkingType(typeValue: string): string {
 }
 
 // GET - 獲取項目的停車位數據
-export const GET = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
@@ -113,7 +114,7 @@ export const GET = withErrorHandler(async (request: NextRequest, { params }: { p
       total,
       totalPages
     })
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON'])
 
 // 狀態值映射：前端到後端
 function mapParkingStatus(frontendStatus: string): string {
@@ -133,7 +134,7 @@ function mapParkingStatus(frontendStatus: string): string {
 }
 
 // POST - 創建新的停車位
-export const POST = withErrorHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = params.id
     const body = await request.json()
     const {
@@ -211,4 +212,4 @@ export const POST = withErrorHandler(async (request: NextRequest, { params }: { 
     }
     
     return createSuccessResponse(formattedRecord, undefined, 201)
-})
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'])
