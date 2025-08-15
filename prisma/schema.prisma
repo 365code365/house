@@ -341,10 +341,6 @@ model WithdrawalRecord {
   floor          Int
   /// 单元号
   unit           String                 @db.VarChar(10)
-  /// 退户状态
-  status         WithdrawalRecordStatus
-  /// 退户原因（可选）
-  reason         String?                @db.VarChar(100)
   /// 退户日期
   withdrawalDate DateTime               @map("withdrawal_date") @db.Date
   /// 房屋价格（元，可选）
@@ -355,14 +351,18 @@ model WithdrawalRecord {
   parkingPrice   Decimal?               @map("parking_price") @db.Decimal(15, 2)
   /// 总价格（元，可选）
   totalPrice     Decimal?               @map("total_price") @db.Decimal(15, 2)
-  /// 房屋编号（可选）
-  houseNo        String?                @map("house_no") @db.VarChar(50)
   /// 所属项目ID
   projectId      Int                    @map("project_id")
   /// 创建时间
   createdAt      DateTime               @default(now()) @map("created_at")
   /// 最后更新时间
   updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
+  /// 房屋编号（可选）
+  houseNo        String?                @map("house_no") @db.VarChar(50)
+  /// 退户原因（可选）
+  reason         String?                @db.VarChar(100)
+  /// 退户状态
+  status         WithdrawalRecordStatus
   project        Project                @relation(fields: [projectId], references: [id])
 
   @@index([projectId], map: "withdrawal_record_project_id_fkey")
@@ -582,6 +582,43 @@ model HandoverManagement {
   @@map("handover_management")
 }
 
+/// 用户模型
+/// 存储系统用户的基本信息和权限
+model User {
+  /// 用户ID，主键，自增
+  id          Int       @id @default(autoincrement())
+  /// 用户名，唯一
+  username    String    @unique @db.VarChar(50)
+  /// 用户邮箱，唯一
+  email       String    @unique @db.VarChar(100)
+  /// 用户密码（加密后）
+  password    String    @db.VarChar(255)
+  /// 用户真实姓名
+  name        String    @db.VarChar(100)
+  /// 用户角色
+  role        UserRole  @default(USER)
+  /// 用户头像URL（可选）
+  avatar      String?   @db.VarChar(255)
+  /// 联系电话（可选）
+  phone       String?   @db.VarChar(20)
+  /// 部门（可选）
+  department  String?   @db.VarChar(100)
+  /// 职位（可选）
+  position    String?   @db.VarChar(100)
+  /// 可访问的项目ID列表，逗号分隔（可选）
+  projectIds  String?   @map("project_ids") @db.VarChar(255)
+  /// 账户是否激活
+  isActive    Boolean   @default(true) @map("is_active")
+  /// 最后登录时间（可选）
+  lastLoginAt DateTime? @map("last_login_at")
+  /// 创建时间
+  createdAt   DateTime  @default(now()) @map("created_at")
+  /// 最后更新时间
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("user")
+}
+
 /// 销控销售状态枚举
 enum SalesControlSalesStatus {
   /// 房屋已售出
@@ -796,41 +833,4 @@ enum UserRole {
   CUSTOMER_SERVICE @map("客服人員")
   /// 普通用户
   USER             @map("普通用戶")
-}
-
-/// 用户模型
-/// 存储系统用户的基本信息和权限
-model User {
-  /// 用户ID，主键，自增
-  id          Int       @id @default(autoincrement())
-  /// 用户名，唯一
-  username    String    @unique @db.VarChar(50)
-  /// 用户邮箱，唯一
-  email       String    @unique @db.VarChar(100)
-  /// 用户密码（加密后）
-  password    String    @db.VarChar(255)
-  /// 用户真实姓名
-  name        String    @db.VarChar(100)
-  /// 用户角色
-  role        UserRole  @default(USER)
-  /// 用户头像URL（可选）
-  avatar      String?   @db.VarChar(255)
-  /// 联系电话（可选）
-  phone       String?   @db.VarChar(20)
-  /// 部门（可选）
-  department  String?   @db.VarChar(100)
-  /// 职位（可选）
-  position    String?   @db.VarChar(100)
-  /// 可访问的项目ID列表，逗号分隔（可选）
-  projectIds  String?   @map("project_ids") @db.VarChar(255)
-  /// 账户是否激活
-  isActive    Boolean   @default(true) @map("is_active")
-  /// 最后登录时间（可选）
-  lastLoginAt DateTime? @map("last_login_at")
-  /// 创建时间
-  createdAt   DateTime  @default(now()) @map("created_at")
-  /// 最后更新时间
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  @@map("user")
 }

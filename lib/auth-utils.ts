@@ -180,8 +180,173 @@ export async function checkProjectAccess(
   }
 }
 
-// API權限中間件包裝器
-export function withApiAuth(requiredRoles?: UserRole[]) {
+// RBAC權限檢查函數
+export async function checkMenuPermission(
+  userId: number,
+  menuName: string
+): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    })
+    
+    if (!user || !user.role) return false
+    
+    // 超級管理員擁有所有權限
+    if (user.role === UserRole.SUPER_ADMIN) return true
+    
+    // 查詢角色對應的菜單權限
+    const roleMenuPermission = await prisma.roleMenuPermission.findFirst({
+      where: {
+        role: {
+          name: user.role
+        },
+        menu: {
+          name: menuName
+        }
+      }
+    })
+    
+    return !!roleMenuPermission
+  } catch (error) {
+    console.error('檢查菜單權限失敗:', error)
+    return false
+  }
+}
+
+export async function checkButtonPermission(
+  userId: number,
+  buttonName: string
+): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    })
+    
+    if (!user || !user.role) return false
+    
+    // 超級管理員擁有所有權限
+    if (user.role === UserRole.SUPER_ADMIN) return true
+    
+    // 查詢角色對應的按鈕權限
+    const roleButtonPermission = await prisma.roleButtonPermission.findFirst({
+      where: {
+        role: {
+          name: user.role
+        },
+        button: {
+          name: buttonName
+        }
+      }
+    })
+    
+    return !!roleButtonPermission
+  } catch (error) {
+    console.error('檢查按鈕權限失敗:', error)
+    return false
+  }
+}
+
+export async function getUserPermissions(userId: number): Promise<{
+  menus: string[]
+  buttons: string[]
+}> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    })
+    
+    if (!user || !user.role) {
+      return { menus: [], buttons: [] }
+    }
+    
+    // 超級管理員擁有所有權限
+    if (user.role === UserRole.SUPER_ADMIN) {
+      const [allMenus, allButtons] = await Promise.all([
+        prisma.menu.findMany({
+          where: { isActive: true },
+          select: { name: true }
+        }),
+        prisma.buttonPermission.findMany({
+          where: { isActive: true },
+          select: { name: true }
+        })
+      ])
+      
+      return {
+        menus: allMenus.map(m => m.name),
+        buttons: allButtons.map(b => b.name)
+      }
+    }
+    
+    // 查詢角色對應的權限
+    const role = await prisma.role.findUnique({
+      where: { name: user.role },
+      include: {
+        menuPermissions: {
+          include: {
+            menu: {
+              select: { name: true }
+            }
+          }
+        },
+        buttonPermissions: {
+          include: {
+            button: {
+              select: { name: true }
+            }
+          }
+        }
+      }
+    })
+    
+    if (!role) {
+      return { menus: [], buttons: [] }
+    }
+    
+    return {
+      menus: role.menuPermissions.map(mp => mp.menu.name),
+      buttons: role.buttonPermissions.map(bp => bp.button.name)
+    }
+  } catch (error) {
+    console.error('獲取用戶權限失敗:', error)
+    return { menus: [], buttons: [] }
+  }
+}
+
+// API權限中間件包裝器（重載版本）
+export function withApiAuth(
+  request: NextRequest,
+  requiredRoles: UserRole[],
+  handler: (user: any) => Promise<Response>
+): Promise<Response>
+export function withApiAuth(requiredRoles?: UserRole[]): (request: NextRequest) => Promise<any>
+export function withApiAuth(
+  requestOrRoles?: NextRequest | UserRole[],
+  requiredRolesOrHandler?: UserRole[] | ((user: any) => Promise<Response>),
+  handler?: (user: any) => Promise<Response>
+): any {
+  // 新的重載：直接執行處理器
+  if (requestOrRoles instanceof NextRequest && Array.isArray(requiredRolesOrHandler) && handler) {
+    return (async () => {
+      const authResult = await checkApiPermission(requestOrRoles, requiredRolesOrHandler)
+      
+      if (!authResult.authorized) {
+        return Response.json(
+          { error: authResult.error || '權限不足' },
+          { status: authResult.user ? 403 : 401 }
+        )
+      }
+      
+      return handler(authResult.user)
+    })()
+  }
+  
+  // 原有的重載：返回中間件函數
+  const requiredRoles = Array.isArray(requestOrRoles) ? requestOrRoles : requiredRolesOrHandler as UserRole[]
   return async function(request: NextRequest) {
     const authResult = await checkApiPermission(request, requiredRoles)
     
