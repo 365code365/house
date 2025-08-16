@@ -185,3 +185,217 @@
     padding: 0.25rem;
   }
 }
+
+/* 菜单树样式 */
+.menu-tree .ant-tree-node-content-wrapper {
+  padding: 2px 4px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  margin: 2px 0;
+}
+
+.menu-tree .ant-tree-node-content-wrapper:hover {
+  background-color: transparent;
+}
+
+.menu-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+  background-color: transparent;
+}
+
+.menu-tree .ant-tree-treenode {
+  margin: 4px 0;
+}
+
+.menu-tree .ant-tree-indent {
+  margin-right: 12px;
+}
+
+.menu-tree .ant-tree-switcher {
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.menu-tree .ant-tree-switcher:hover {
+  background-color: #e3f2fd;
+}
+
+.menu-tree .ant-tree-switcher-icon {
+  color: #1976d2;
+}
+
+/* 菜单树节点样式 */
+.menu-tree-node:hover {
+  background-color: #f8fafc;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.menu-tree-node:hover .menu-actions {
+  opacity: 1;
+}
+
+/* 自定义表格样式 */
+.custom-table .ant-table-thead > tr > th {
+  background-color: #fafafa;
+  border-bottom: 2px solid #e5e7eb;
+  font-weight: 600;
+  color: #374151;
+  padding: 16px 12px;
+}
+
+.custom-table .ant-table-tbody > tr > td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.custom-table .ant-table-tbody > tr:hover > td {
+  background-color: #f0f9ff !important;
+}
+
+.custom-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+/* 紧凑表格样式 */
+.compact-table .ant-table-thead > tr > th {
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  color: #475569;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.compact-table .ant-table-tbody > tr > td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+
+.compact-table .ant-table-tbody > tr:hover > td {
+  background-color: #f0f9ff !important;
+}
+
+.compact-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+.compact-table .ant-table-tbody > tr {
+  cursor: pointer;
+}
+
+/* 菜单树紧凑样式 */
+.menu-tree .ant-tree-treenode {
+  margin: 1px 0;
+}
+
+.menu-tree .ant-tree-node-content-wrapper {
+  padding: 1px 2px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.menu-tree .ant-tree-indent {
+  margin-right: 8px;
+}
+
+/* 扩展菜单树样式 */
+.menu-tree-expanded .ant-tree-treenode {
+  margin: 4px 0;
+}
+
+.menu-tree-expanded .ant-tree-node-content-wrapper {
+  padding: 2px 4px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: transparent;
+}
+
+.menu-tree-expanded .ant-tree-node-content-wrapper:hover {
+  background: transparent;
+}
+
+.menu-tree-expanded .ant-tree-indent {
+  margin-right: 16px;
+}
+
+.menu-tree-expanded .ant-tree-switcher {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.menu-tree-expanded .ant-tree-switcher:hover {
+  background-color: #e3f2fd;
+  transform: scale(1.1);
+}
+
+.menu-tree-expanded .ant-tree-switcher-icon {
+  color: #1976d2;
+  font-size: 14px;
+}
+
+/* 扩展菜单树节点悬停效果 */
+.menu-tree-expanded .menu-tree-node:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.menu-tree-expanded .menu-tree-node:hover .menu-actions {
+  opacity: 1;
+}
+
+/* 菜单树节点标签样式 */
+.menu-tree-node .ant-tag {
+  margin: 0;
+  border: none;
+  font-size: 10px;
+}
+
+/* 菜单项样式 */
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f8fafc;
+}
+
+.menu-item .menu-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-item .menu-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.menu-item:hover .menu-actions {
+  opacity: 1;
+}
+
+/* 渐变背景 */
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 卡片阴影 */
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}

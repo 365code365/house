@@ -3,19 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
-import { Layout, Menu, Breadcrumb, Spin, Alert } from 'antd'
-import {
-  SettingOutlined,
-  UserOutlined,
-  MenuOutlined,
-  KeyOutlined,
-  TeamOutlined,
-  AuditOutlined,
-  DashboardOutlined
-} from '@ant-design/icons'
-import type { MenuProps } from 'antd'
-
-const { Sider, Content } = Layout
+import { Breadcrumb, Spin, Alert } from 'antd'
 
 interface PermissionsLayoutProps {
   children: React.ReactNode
@@ -49,55 +37,7 @@ export default function PermissionsLayout({ children }: PermissionsLayoutProps) 
     setLoading(false)
   }, [session, status, router])
 
-  const menuItems: MenuProps['items'] = [
-    {
-      key: 'overview',
-      icon: <DashboardOutlined />,
-      label: '權限概覽',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions`)
-    },
-    {
-      key: 'roles',
-      icon: <TeamOutlined />,
-      label: '角色管理',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions/roles`)
-    },
-    {
-      key: 'menus',
-      icon: <MenuOutlined />,
-      label: '菜單權限',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions/menus`)
-    },
-    {
-      key: 'buttons',
-      icon: <KeyOutlined />,
-      label: '按鈕權限',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions/buttons`)
-    },
-    {
-      key: 'users',
-      icon: <UserOutlined />,
-      label: '用戶權限',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions/users`)
-    },
-    {
-      key: 'audit',
-      icon: <AuditOutlined />,
-      label: '審計日誌',
-      onClick: () => router.push(`/project/${projectId}/admin/permissions/audit-logs`)
-    }
-  ]
 
-  // 獲取當前選中的菜單項
-  const getCurrentMenuKey = () => {
-    const pathname = window.location.pathname
-    if (pathname.includes('/roles')) return 'roles'
-    if (pathname.includes('/menus')) return 'menus'
-    if (pathname.includes('/buttons')) return 'buttons'
-    if (pathname.includes('/users')) return 'users'
-    if (pathname.includes('/audit-logs')) return 'audit'
-    return 'overview'
-  }
 
   // 獲取面包屑導航
   const getBreadcrumbItems = () => {
@@ -155,39 +95,16 @@ export default function PermissionsLayout({ children }: PermissionsLayoutProps) 
   }
 
   return (
-    <Layout className="min-h-screen">
-      <Sider
-        width={250}
-        className="bg-white shadow-md"
-        theme="light"
-      >
-        <div className="p-4 border-b">
-          <div className="flex items-center space-x-2">
-            <SettingOutlined className="text-blue-500 text-xl" />
-            <span className="font-semibold text-gray-800">權限管理</span>
-          </div>
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[getCurrentMenuKey()]}
-          items={menuItems}
-          className="border-r-0"
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-6">
+        <Breadcrumb
+          items={getBreadcrumbItems()}
+          className="mb-4"
         />
-      </Sider>
-      
-      <Layout>
-        <Content className="bg-gray-50">
-          <div className="p-6">
-            <Breadcrumb
-              items={getBreadcrumbItems()}
-              className="mb-4"
-            />
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              {children}
-            </div>
-          </div>
-        </Content>
-      </Layout>
-    </Layout>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          {children}
+        </div>
+      </div>
+    </div>
   )
 }

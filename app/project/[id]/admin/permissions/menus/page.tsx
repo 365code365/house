@@ -35,7 +35,9 @@ import {
   SettingOutlined,
   TeamOutlined,
   EyeOutlined,
-  BranchesOutlined
+  BranchesOutlined,
+  MinusOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { DataNode } from 'antd/es/tree'
@@ -273,20 +275,74 @@ export default function MenuPermissions() {
       return nodes.map(node => ({
         key: node.id,
         title: (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-2">
-              <span className="text-lg">
-                {node.children && node.children.length > 0 ? '📁' : '📄'}
-              </span>
-              <span className="font-medium">{node.displayName}</span>
-              <Text type="secondary" className="text-xs">({node.name})</Text>
-              {!node.isActive && <Tag color="red">停用</Tag>}
+          <div className="menu-tree-node group flex items-start justify-between w-full py-3 px-4 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 border border-transparent hover:border-blue-200">
+            <div className="flex items-start space-x-3 flex-1 min-w-0">
+              <div className={`flex items-center justify-center w-5 h-5 rounded-full text-white text-xs flex-shrink-0 ${
+                node.children && node.children.length > 0 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600' 
+                  : 'bg-gradient-to-r from-green-500 to-teal-600'
+              }`}>
+                {node.children && node.children.length > 0 ? (
+                  <FolderOutlined />
+                ) : (
+                  <FileOutlined />
+                )}
+              </div>
+                            <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold text-gray-800 text-base">{node.displayName}</span>
+                  {!node.isActive && (
+                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                      停用
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-3 text-sm text-gray-600 mt-1">
+                  <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded font-mono text-xs">
+                    {node.name}
+                  </span>
+                  {node.path && (
+                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">
+                      路径: {node.path}
+                    </span>
+                  )}
+                  {node.icon && (
+                    <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs">
+                      图标: {node.icon}
+                    </span>
+                  )}
+                  <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs">
+                    排序: {node.sortOrder}
+                  </span>
+                  {node.rolePermissions && node.rolePermissions.length > 0 && (
+                    <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">
+                      权限: {node.rolePermissions.length}个角色
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-1">
-              <Tooltip title="編輯">
+            <div className="menu-actions flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 flex-shrink-0">
+              <Tooltip title="添加子菜單" placement="top">
                 <Button
                   type="text"
                   size="small"
+                  className="w-8 h-8 p-0 hover:bg-green-100 hover:text-green-600 rounded-lg hover:scale-105 transition-all"
+                  icon={<PlusOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingMenu(null)
+                    form.resetFields()
+                    form.setFieldsValue({ parentId: node.id })
+                    setModalVisible(true)
+                  }}
+                />
+              </Tooltip>
+              <Tooltip title="編輯菜單" placement="top">
+                <Button
+                  type="text"
+                  size="small"
+                  className="w-8 h-8 p-0 hover:bg-blue-100 hover:text-blue-600 rounded-lg hover:scale-105 transition-all"
                   icon={<EditOutlined />}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -299,21 +355,23 @@ export default function MenuPermissions() {
                   }}
                 />
               </Tooltip>
-              <Tooltip title="刪除">
+              <Tooltip title="刪除菜單" placement="top">
                 <Popconfirm
-                  title="確定要刪除這個菜單嗎？"
-                  description="刪除後將無法恢復，且會同時刪除所有子菜單"
+                  title="確定要刪除？"
+                  description={`將刪除「${node.displayName}」${node.children?.length ? '及其所有子菜單' : ''}`}
                   onConfirm={(e) => {
                     e?.stopPropagation()
                     handleDeleteMenu(node.id)
                   }}
-                  okText="確定"
+                  okText="刪除"
                   cancelText="取消"
+                  placement="topRight"
                 >
                   <Button
                     type="text"
                     size="small"
                     danger
+                    className="w-8 h-8 p-0 hover:bg-red-100 hover:text-red-600 rounded-lg hover:scale-105 transition-all"
                     icon={<DeleteOutlined />}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -341,68 +399,6 @@ export default function MenuPermissions() {
     return filterMenus(menus)
   }
 
-  const columns: ColumnsType<Menu> = [
-    {
-      title: '菜單名稱',
-      dataIndex: 'displayName',
-      key: 'displayName',
-      render: (text, record) => (
-        <div className="flex items-center space-x-2">
-          {record.parentId ? (
-            <FileOutlined className="text-gray-500" />
-          ) : (
-            <FolderOutlined className="text-blue-500" />
-          )}
-          <div>
-            <div className="font-medium">{text}</div>
-            <Text type="secondary" className="text-xs">{record.name}</Text>
-          </div>
-        </div>
-      )
-    },
-    {
-      title: '路徑',
-      dataIndex: 'path',
-      key: 'path',
-      render: (path) => path && <Text code>{path}</Text>
-    },
-    {
-      title: '父菜單',
-      dataIndex: 'parent',
-      key: 'parent',
-      render: (parent) => parent?.displayName || '-'
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortOrder',
-      key: 'sortOrder',
-      width: 80
-    },
-    {
-      title: '狀態',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive) => (
-        <Badge
-          status={isActive ? 'success' : 'default'}
-          text={isActive ? '啟用' : '停用'}
-        />
-      )
-    },
-    {
-      title: '權限角色',
-      key: 'roles',
-      render: (_, record) => (
-        <div className="flex flex-wrap gap-1">
-          {record.rolePermissions?.map(rp => (
-            <Tag key={rp.role.id} color="blue" className="text-xs">
-              {rp.role.displayName}
-            </Tag>
-          )) || <Text type="secondary">無</Text>}
-        </div>
-      )
-    }
-  ]
 
   return (
     <div className="space-y-6">
@@ -426,7 +422,6 @@ export default function MenuPermissions() {
             權限矩陣
           </Button>
           <Button
-            type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
               setEditingMenu(null)
@@ -472,44 +467,143 @@ export default function MenuPermissions() {
                 <Text type="secondary">啟用菜單</Text>
                 <div className="text-2xl font-bold text-orange-600">
                   {menus.filter(m => m.isActive).length}
-                </div>
               </div>
-              <SettingOutlined className="text-3xl text-orange-500" />
+            </div>
+            <SettingOutlined className="text-3xl text-orange-500" />
+          </div>
+        </Card>
+      </Col>
+      <Col xs={24} sm={8}>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <Text type="secondary">有子菜單的根菜單</Text>
+              <div className="text-2xl font-bold text-purple-600">
+                {menus.filter(m => !m.parentId && m.children && m.children.length > 0).length}
+              </div>
+            </div>
+            <BranchesOutlined className="text-3xl text-purple-500" />
+          </div>
+        </Card>
+      </Col>
+    </Row>
+
+      {/* 菜單管理主界面 */}
+      <Row gutter={[16, 16]} className="min-h-0">
+        <Col span={24}>
+          <Card 
+            title={
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <BranchesOutlined className="text-blue-500 text-lg" />
+                  <span className="font-semibold text-lg">菜單樹結構</span>
+                  <div className="flex items-center space-x-3 text-sm text-gray-600">
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                      共 {menus.length} 個菜單
+                    </span>
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                      {menus.filter(m => !m.parentId).length} 個根菜單
+                    </span>
+                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
+                      {menus.filter(m => m.isActive).length} 個啟用
+                    </span>
+                  </div>
+                </div>
+                <Space size="middle">
+                  <Button 
+                    size="small" 
+                    type="text"
+                    icon={<PlusOutlined />}
+                    onClick={() => setExpandedKeys(menus.map(m => m.id))}
+                    className="hover:bg-blue-50 px-3 py-1"
+                  >
+                    全部展開
+                  </Button>
+                  <Button 
+                    size="small" 
+                    type="text"
+                    icon={<MinusOutlined />}
+                    onClick={() => setExpandedKeys([])}
+                    className="hover:bg-gray-50 px-3 py-1"
+                  >
+                    全部收起
+                  </Button>
+                  <Button 
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      setEditingMenu(null)
+                      form.resetFields()
+                      setModalVisible(true)
+                    }}
+                  >
+                    新增菜單
+                  </Button>
+                </Space>
+              </div>
+            } 
+            className="shadow-sm border-0"
+            bodyStyle={{ padding: '20px' }}
+          >
+            <div className="h-[600px] overflow-auto bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 rounded-xl p-6 border border-gray-200">
+              <Tree
+                treeData={buildMenuTree(menus)}
+                expandedKeys={expandedKeys}
+                onExpand={setExpandedKeys}
+                showLine={{ showLeafIcon: false }}
+                showIcon={false}
+                className="menu-tree-expanded bg-transparent"
+              />
             </div>
           </Card>
         </Col>
       </Row>
 
-      {/* 菜單樹視圖 */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
-          <Card title="菜單樹結構" className="h-96">
-            <div className="h-80 overflow-auto">
-              <Tree
-                treeData={buildMenuTree(menus)}
-                expandedKeys={expandedKeys}
-                onExpand={setExpandedKeys}
-                showLine
-                showIcon={false}
-              />
+      {/* 調試信息 */}
+      <Card title="調試信息" className="mt-6">
+        <div className="space-y-4">
+          <div>
+            <Text strong>菜單總數: {menus.length}</Text>
+          </div>
+          <div>
+            <Text strong>財務系統菜單:</Text>
+            <pre className="text-xs bg-gray-100 p-2 mt-2 rounded">
+              {JSON.stringify(menus.find(m => m.name === 'financial'), null, 2)}
+            </pre>
+          </div>
+          <div>
+            <Text strong>財務系統子菜單數量:</Text>
+            <div className="text-lg font-bold text-blue-600">
+              {(() => {
+                const financial = menus.find(m => m.name === 'financial');
+                return financial?.children?.length || 0;
+              })()}
             </div>
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title="菜單列表" className="h-96">
-            <div className="h-80 overflow-auto">
-              <Table
-                columns={columns}
-                dataSource={menus}
-                rowKey="id"
-                loading={loading}
-                pagination={false}
-                size="small"
-              />
+          </div>
+          <div>
+            <Text strong>銷控總表子菜單數量:</Text>
+            <div className="text-lg font-bold text-green-600">
+              {(() => {
+                const salesControl = menus.find(m => m.name === 'sales-control-group');
+                return salesControl?.children?.length || 0;
+              })()}
             </div>
-          </Card>
-        </Col>
-      </Row>
+          </div>
+          <div>
+            <Text strong>有子菜單的根菜單:</Text>
+            <div className="space-y-2">
+              {menus
+                .filter(m => !m.parentId && m.children && m.children.length > 0)
+                .map(menu => (
+                  <div key={menu.id} className="flex items-center space-x-2">
+                    <span>📁 {menu.displayName}</span>
+                    <span className="text-sm text-gray-500">({menu.children?.length} 個子菜單)</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* 創建/編輯菜單模態框 */}
       <Modal

@@ -21,7 +21,11 @@ import {
     MoneyCollectOutlined,
     DollarCircleOutlined,
     MenuOutlined,
-    SearchOutlined
+    SearchOutlined,
+    SettingOutlined,
+    SafetyOutlined,
+    KeyOutlined,
+    AuditOutlined
 } from '@ant-design/icons'
 import {Layout, Menu, Button, Spin, Typography, Drawer, Input, AutoComplete} from 'antd'
 import type {MenuProps} from 'antd'
@@ -124,6 +128,45 @@ const getMenuItems = (projectId: string): MenuItem[] => [
         icon: <FallOutlined/>,
         label: <Link href={`/project/${projectId}/withdrawal`}>退戶記錄</Link>,
     },
+    {
+        key: 'admin',
+        icon: <SettingOutlined/>,
+        label: '系統管理',
+        children: [
+            {
+                key: 'permissions',
+                icon: <SafetyOutlined/>,
+                label: '權限管理',
+                children: [
+                    {
+                        key: 'permission-menus',
+                        icon: <MenuOutlined/>,
+                        label: <Link href={`/project/${projectId}/admin/permissions/menus`}>菜單權限</Link>,
+                    },
+                    {
+                        key: 'permission-buttons',
+                        icon: <KeyOutlined/>,
+                        label: <Link href={`/project/${projectId}/admin/permissions/buttons`}>按鈕權限</Link>,
+                    },
+                    {
+                        key: 'permission-users',
+                        icon: <UserOutlined/>,
+                        label: <Link href={`/project/${projectId}/admin/permissions/users`}>用戶權限</Link>,
+                    },
+                    {
+                        key: 'permission-roles',
+                        icon: <TeamOutlined/>,
+                        label: <Link href={`/project/${projectId}/admin/permissions/roles`}>角色管理</Link>,
+                    },
+                    {
+                        key: 'audit-logs',
+                        icon: <AuditOutlined/>,
+                        label: <Link href={`/project/${projectId}/admin/permissions/audit-logs`}>審計日誌</Link>,
+                    },
+                ],
+            },
+        ],
+    },
 ]
 
 export default function ProjectLayout({
@@ -155,6 +198,7 @@ export default function ProjectLayout({
         const extractItems = (items: MenuItem[]) => {
             items.forEach((item: any) => {
                 if (item.children) {
+                    // 递归处理子菜单
                     extractItems(item.children)
                 } else if (item.label && typeof item.label === 'object' && item.label.props?.href) {
                     const labelText = item.label.props.children

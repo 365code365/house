@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '100'); // 增加默認限制
     const search = searchParams.get('search') || '';
     const roleFilter = searchParams.get('role') || '';
     
@@ -46,16 +46,44 @@ export async function GET(request: NextRequest) {
       ];
     }
     
-    // 獲取菜單列表
+    // 獲取菜單列表 - 移除分頁以確保父子關聯正確
     const [menus, total] = await Promise.all([
       prisma.menu.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: { sortOrder: 'asc' },
+        orderBy: [
+          { parentId: 'asc' },
+          { sortOrder: 'asc' }
+        ],
         include: {
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true
+            }
+          },
           children: {
-            orderBy: { sortOrder: 'asc' }
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true
+                }
+              }
+            }
+          },
+          rolePermissions: {
+            include: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true
+                }
+              }
+            }
           }
         }
       }),

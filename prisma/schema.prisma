@@ -586,40 +586,144 @@ model HandoverManagement {
 /// 存储系统用户的基本信息和权限
 model User {
   /// 用户ID，主键，自增
-  id          Int       @id @default(autoincrement())
+  id                  Int                  @id @default(autoincrement())
   /// 用户名，唯一
-  username    String    @unique @db.VarChar(50)
+  username            String               @unique @db.VarChar(50)
   /// 用户邮箱，唯一
-  email       String    @unique @db.VarChar(100)
+  email               String               @unique @db.VarChar(100)
   /// 用户密码（加密后）
-  password    String    @db.VarChar(255)
+  password            String               @db.VarChar(255)
   /// 用户真实姓名
-  name        String    @db.VarChar(100)
+  name                String               @db.VarChar(100)
   /// 用户角色
-  role        UserRole  @default(USER)
+  role                UserRole             @default(USER)
   /// 用户头像URL（可选）
-  avatar      String?   @db.VarChar(255)
+  avatar              String?              @db.VarChar(255)
   /// 联系电话（可选）
-  phone       String?   @db.VarChar(20)
+  phone               String?              @db.VarChar(20)
   /// 部门（可选）
-  department  String?   @db.VarChar(100)
+  department          String?              @db.VarChar(100)
   /// 职位（可选）
-  position    String?   @db.VarChar(100)
+  position            String?              @db.VarChar(100)
   /// 可访问的项目ID列表，逗号分隔（可选）
-  projectIds  String?   @map("project_ids") @db.VarChar(255)
+  projectIds          String?              @map("project_ids") @db.VarChar(255)
   /// 账户是否激活
-  isActive    Boolean   @default(true) @map("is_active")
+  isActive            Boolean              @default(true) @map("is_active")
   /// 最后登录时间（可选）
-  lastLoginAt DateTime? @map("last_login_at")
+  lastLoginAt         DateTime?            @map("last_login_at")
   /// 创建时间
-  createdAt   DateTime  @default(now()) @map("created_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
   /// 最后更新时间
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  // 關聯關係
+  updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at")
   permissionAuditLogs PermissionAuditLog[]
 
   @@map("user")
+}
+
+/// 角色表
+model Role {
+  id                Int                    @id @default(autoincrement())
+  name              String                 @unique @db.VarChar(50)
+  displayName       String                 @map("display_name") @db.VarChar(100)
+  description       String?                @db.Text
+  isActive          Boolean                @default(true) @map("is_active")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  buttonPermissions RoleButtonPermission[]
+  menuPermissions   RoleMenuPermission[]
+
+  @@map("roles")
+}
+
+/// 菜單表
+model Menu {
+  id                Int                  @id @default(autoincrement())
+  name              String               @db.VarChar(100)
+  displayName       String               @map("display_name") @db.VarChar(100)
+  path              String               @db.VarChar(255)
+  icon              String?              @db.VarChar(50)
+  parentId          Int?                 @map("parent_id")
+  sortOrder         Int                  @default(0) @map("sort_order")
+  isActive          Boolean              @default(true) @map("is_active")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  buttonPermissions ButtonPermission[]
+  parent            Menu?                @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children          Menu[]               @relation("MenuHierarchy")
+  rolePermissions   RoleMenuPermission[]
+
+  @@index([parentId], map: "menus_parent_id_fkey")
+  @@map("menus")
+}
+
+/// 角色菜單權限表
+model RoleMenuPermission {
+  id        Int      @id @default(autoincrement())
+  roleId    Int      @map("role_id")
+  menuId    Int      @map("menu_id")
+  canAccess Boolean  @default(true) @map("can_access")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  menu      Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, menuId])
+  @@index([menuId], map: "role_menu_permissions_menu_id_fkey")
+  @@map("role_menu_permissions")
+}
+
+/// 按鈕權限表
+model ButtonPermission {
+  id              Int                    @id @default(autoincrement())
+  name            String                 @db.VarChar(100)
+  identifier      String                 @db.VarChar(100)
+  menuId          Int                    @map("menu_id")
+  description     String?                @db.Text
+  isActive        Boolean                @default(true) @map("is_active")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+  menu            Menu                   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  rolePermissions RoleButtonPermission[]
+
+  @@unique([menuId, identifier])
+  @@map("button_permissions")
+}
+
+/// 角色按鈕權限表
+model RoleButtonPermission {
+  id         Int              @id @default(autoincrement())
+  roleId     Int              @map("role_id")
+  buttonId   Int              @map("button_id")
+  canOperate Boolean          @default(true) @map("can_operate")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+  button     ButtonPermission @relation(fields: [buttonId], references: [id], onDelete: Cascade)
+  role       Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, buttonId])
+  @@index([buttonId], map: "role_button_permissions_button_id_fkey")
+  @@map("role_button_permissions")
+}
+
+/// 權限審計日誌表
+model PermissionAuditLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  action       String   @db.VarChar(50)
+  resourceType String   @map("resource_type") @db.VarChar(50)
+  resourceId   Int      @map("resource_id")
+  beforeData   String?  @map("before_data") @db.Text
+  afterData    String?  @map("after_data") @db.Text
+  description  String?  @db.Text
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("permission_audit_logs")
 }
 
 /// 销控销售状态枚举
@@ -644,7 +748,7 @@ enum ParkingSpaceType {
   MECHANICAL_MID  @map("機械中層")
   /// 机械式下层停车位
   MECHANICAL_BOT  @map("機械下層")
-  /// 机械式平移停车位
+  /// 机械式平移停车���
   MECHANICAL_MOVE @map("機械平移")
   /// 摩托车停车位
   MOTORCYCLE      @map("機車位")
@@ -836,122 +940,4 @@ enum UserRole {
   CUSTOMER_SERVICE @map("客服人員")
   /// 普通用户
   USER             @map("普通用戶")
-}
-
-// RBAC權限管理系統模型定義
-
-/// 角色表
-model Role {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(50)
-  displayName String   @map("display_name") @db.VarChar(100)
-  description String?  @db.Text
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // 關聯關係
-  menuPermissions   RoleMenuPermission[]
-  buttonPermissions RoleButtonPermission[]
-
-  @@map("roles")
-}
-
-/// 菜單表
-model Menu {
-  id        Int      @id @default(autoincrement())
-  name      String   @db.VarChar(100)
-  path      String   @db.VarChar(255)
-  icon      String?  @db.VarChar(50)
-  parentId  Int?     @map("parent_id")
-  sortOrder Int      @default(0) @map("sort_order")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // 自關聯
-  parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id])
-  children Menu[] @relation("MenuHierarchy")
-
-  // 關聯關係
-  rolePermissions   RoleMenuPermission[]
-  buttonPermissions ButtonPermission[]
-
-  @@map("menus")
-}
-
-/// 角色菜單權限表
-model RoleMenuPermission {
-  id        Int      @id @default(autoincrement())
-  roleId    Int      @map("role_id")
-  menuId    Int      @map("menu_id")
-  canAccess Boolean  @default(true) @map("can_access")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // 關聯關係
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, menuId])
-  @@map("role_menu_permissions")
-}
-
-/// 按鈕權限表
-model ButtonPermission {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  identifier  String   @db.VarChar(100)
-  menuId      Int      @map("menu_id")
-  description String?  @db.Text
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // 關聯關係
-  menu            Menu                   @relation(fields: [menuId], references: [id], onDelete: Cascade)
-  rolePermissions RoleButtonPermission[]
-
-  @@unique([menuId, identifier])
-  @@map("button_permissions")
-}
-
-/// 角色按鈕權限表
-model RoleButtonPermission {
-  id         Int      @id @default(autoincrement())
-  roleId     Int      @map("role_id")
-  buttonId   Int      @map("button_id")
-  canOperate Boolean  @default(true) @map("can_operate")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  // 關聯關係
-  role   Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  button ButtonPermission @relation(fields: [buttonId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, buttonId])
-  @@map("role_button_permissions")
-}
-
-/// 權限審計日誌表
-model PermissionAuditLog {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  action       String   @db.VarChar(50)
-  resourceType String   @map("resource_type") @db.VarChar(50)
-  resourceId   Int      @map("resource_id")
-  beforeData   String?  @map("before_data") @db.Text
-  afterData    String?  @map("after_data") @db.Text
-  description  String?  @db.Text
-  ipAddress    String?  @map("ip_address") @db.VarChar(45)
-  userAgent    String?  @map("user_agent") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  // 關聯關係
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([resourceType, resourceId])
-  @@index([createdAt])
-  @@map("permission_audit_logs")
 }
