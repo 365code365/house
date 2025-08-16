@@ -41,23 +41,92 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: 'desc' },
           select: {
             id: true,
+            username: true,
             name: true,
             email: true,
+            phone: true,
+            department: true,
+            position: true,
+            avatar: true,
             role: true,
             isActive: true,
+            projectIds: true,
+            employeeNo: true,
+            remark: true,
             createdAt: true,
             updatedAt: true,
-            lastLoginAt: true,
-            projectIds: true
+            lastLoginAt: true
           }
         }),
         prisma.user.count({ where })
       ]);
 
+      // 为销售人员添加统计数据
+      const usersWithStats = await Promise.all(
+        users.map(async (user) => {
+          if (['SALES_MANAGER', 'SALES_PERSON'].includes(user.role) && user.employeeNo) {
+            try {
+              // 获取销售统计数据
+              const salesStats = await prisma.salesControl.aggregate({
+                where: {
+                  salesId: user.employeeNo,
+                  salesStatus: {
+                    in: ['SOLD', 'DEPOSIT']
+                  }
+                },
+                _count: {
+                  id: true
+                },
+                _sum: {
+                  totalWithParking: true
+                }
+              });
+
+              // 获取本月销售数据
+              const currentMonth = new Date();
+              currentMonth.setDate(1);
+              currentMonth.setHours(0, 0, 0, 0);
+
+              const monthlyStats = await prisma.salesControl.aggregate({
+                where: {
+                  salesId: user.employeeNo,
+                  salesStatus: {
+                    in: ['SOLD', 'DEPOSIT']
+                  },
+                  updatedAt: {
+                    gte: currentMonth
+                  }
+                },
+                _count: {
+                  id: true
+                },
+                _sum: {
+                  totalWithParking: true
+                }
+              });
+
+              return {
+                ...user,
+                salesStats: {
+                  totalSales: salesStats._count.id || 0,
+                  totalAmount: salesStats._sum.totalWithParking || 0,
+                  currentMonthSales: monthlyStats._count.id || 0,
+                  currentMonthAmount: monthlyStats._sum.totalWithParking || 0
+                }
+              };
+            } catch (error) {
+              console.error(`获取用户 ${user.id} 销售统计失败:`, error);
+              return user;
+            }
+          }
+          return user;
+        })
+      );
+
       const totalPages = Math.ceil(Number(total) / pageSize);
 
       return successResponse({
-        data: users,
+        data: usersWithStats,
         pagination: {
           total: Number(total),
           page,

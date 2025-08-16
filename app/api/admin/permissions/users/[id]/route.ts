@@ -24,11 +24,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         where: { id: userId },
         select: {
           id: true,
+          username: true,
           name: true,
           email: true,
+          phone: true,
+          department: true,
+          position: true,
+          avatar: true,
           role: true,
           isActive: true,
           projectIds: true,
+          employeeNo: true,
+          remark: true,
           createdAt: true,
           updatedAt: true,
           lastLoginAt: true
@@ -100,7 +107,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
 
       const body = await request.json();
-      const { role, isActive, projectIds } = body;
+      const { 
+        name, 
+        email, 
+        phone, 
+        department, 
+        position, 
+        role, 
+        isActive, 
+        projectIds, 
+        employeeNo, 
+        remark 
+      } = body;
 
       // 獲取原始用戶信息
       const originalUser = await prisma.user.findUnique({
@@ -143,9 +161,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       // 構建更新數據
       const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (email !== undefined) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+      if (department !== undefined) updateData.department = department;
+      if (position !== undefined) updateData.position = position;
       if (role !== undefined) updateData.role = role;
       if (isActive !== undefined) updateData.isActive = isActive;
-      if (projectIds !== undefined) updateData.projectIds = projectIds;
+      if (projectIds !== undefined) {
+        updateData.projectIds = Array.isArray(projectIds) ? projectIds.join(',') : projectIds;
+      }
+      if (employeeNo !== undefined) updateData.employeeNo = employeeNo;
+      if (remark !== undefined) updateData.remark = remark;
 
       // 更新用戶
       const updatedUser = await prisma.user.update({
@@ -153,11 +180,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         data: updateData,
         select: {
           id: true,
+          username: true,
           name: true,
           email: true,
+          phone: true,
+          department: true,
+          position: true,
+          avatar: true,
           role: true,
           isActive: true,
           projectIds: true,
+          employeeNo: true,
+          remark: true,
           updatedAt: true
         }
       });

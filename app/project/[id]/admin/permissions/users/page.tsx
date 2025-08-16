@@ -53,13 +53,25 @@ const { TabPane } = Tabs
 
 interface User {
   id: number
+  username?: string
   name: string
   email: string
   role: string
   isActive: boolean
-  projectIds: number[]
+  phone?: string
+  department?: string
+  position?: string
+  avatar?: string
+  projectIds?: string
+  lastLoginAt?: string
   createdAt: string
   updatedAt: string
+  
+  // 销售人员特有字段
+  employeeNo?: string
+  remark?: string
+  
+  // 关联数据
   roleInfo?: {
     id: number
     name: string
@@ -70,6 +82,14 @@ interface User {
     id: number
     name: string
   }>
+  
+  // 统计数据（销售人员）
+  salesStats?: {
+    totalSales: number
+    totalAmount: number
+    currentMonthSales: number
+    currentMonthAmount: number
+  }
 }
 
 interface Role {
@@ -124,8 +144,12 @@ export default function UserPermissions() {
   const [searchText, setSearchText] = useState('')
   const [selectedRole, setSelectedRole] = useState<string | undefined>()
   const [selectedStatus, setSelectedStatus] = useState<boolean | undefined>()
+  const [currentUserRole, setCurrentUserRole] = useState<string>('USER')
+  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [salesDataModalVisible, setSalesDataModalVisible] = useState(false)
   const [form] = Form.useForm()
   const [batchForm] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   // 獲取用戶列表
   const fetchUsers = async () => {
@@ -181,10 +205,24 @@ export default function UserPermissions() {
     }
   }
 
+  // 获取当前用户角色
+  const fetchCurrentUserRole = async () => {
+    try {
+      const response = await fetch('/api/auth/session')
+      if (response.ok) {
+        const session = await response.json()
+        setCurrentUserRole(session?.user?.role || 'USER')
+      }
+    } catch (error) {
+      console.error('获取用户角色失败:', error)
+    }
+  }
+
   useEffect(() => {
     fetchUsers()
     fetchRoles()
     fetchProjects()
+    fetchCurrentUserRole()
   }, [])
 
   // 搜索和篩選
@@ -274,6 +312,59 @@ export default function UserPermissions() {
     setDetailDrawerVisible(true)
   }
 
+  // 编辑用户
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user)
+    editForm.setFieldsValue({
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      department: user.department,
+      position: user.position,
+      role: user.role,
+      isActive: user.isActive,
+      projectIds: user.projectIds?.split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) || [],
+      employeeNo: user.employeeNo,
+      remark: user.remark
+    })
+    setEditModalVisible(true)
+  }
+
+  // 保存用户编辑
+  const handleSaveUser = async (values: any) => {
+    try {
+      if (!selectedUser) return
+
+      const response = await fetch(`/api/admin/permissions/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...values,
+          projectIds: values.projectIds?.join(',') || ''
+        })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '更新失敗')
+      }
+      
+      message.success('用戶更新成功')
+      setEditModalVisible(false)
+      editForm.resetFields()
+      fetchUsers()
+    } catch (error: any) {
+      console.error('更新用戶失敗:', error)
+      message.error(error.message || '更新用戶失敗')
+    }
+  }
+
+  // 查看销售数据
+  const handleViewSalesData = (user: User) => {
+    setSelectedUser(user)
+    setSalesDataModalVisible(true)
+  }
+
   // 構建菜單樹
   const buildMenuTree = (menus: UserPermissions['menus']): DataNode[] => {
     const menuMap = new Map()
@@ -314,28 +405,57 @@ export default function UserPermissions() {
     return stats
   }
 
+  // 判断是否为销售人员
+  const isSalesPersonnel = (user: User) => {
+    return ['SALES_MANAGER', 'SALES_PERSON'].includes(user.role) || !!user.employeeNo
+  }
+
   const columns: ColumnsType<User> = [
     {
       title: '用戶信息',
       key: 'userInfo',
       render: (_, record) => (
         <div className="flex items-center space-x-3">
-          <Avatar icon={<UserOutlined />} />
+          <Avatar 
+            src={record.avatar} 
+            icon={<UserOutlined />}
+            className={isSalesPersonnel(record) ? 'bg-blue-500' : 'bg-gray-500'}
+          />
           <div>
-            <div className="font-medium">{record.name}</div>
-            <Text type="secondary" className="text-xs">{record.email}</Text>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">{record.name}</span>
+              {isSalesPersonnel(record) && (
+                <Tag color="blue" size="small">销售</Tag>
+              )}
+            </div>
+            <div className="text-xs text-gray-500 space-y-0.5">
+              <div>{record.email}</div>
+              {record.employeeNo && (
+                <div>工号: {record.employeeNo}</div>
+              )}
+              {record.phone && (
+                <div>电话: {record.phone}</div>
+              )}
+            </div>
           </div>
         </div>
       )
     },
     {
-      title: '角色',
-      dataIndex: 'role',
-      key: 'role',
-      render: (role, record) => (
-        <Tag color="blue">
-          {record.roleInfo?.displayName || role}
-        </Tag>
+      title: '角色/部门',
+      key: 'roleInfo',
+      render: (_, record) => (
+        <div className="space-y-1">
+          <Tag color="blue">
+            {record.roleInfo?.displayName || record.role}
+          </Tag>
+          {record.department && (
+            <div className="text-xs text-gray-500">{record.department}</div>
+          )}
+          {record.position && (
+            <div className="text-xs text-gray-400">{record.position}</div>
+          )}
+        </div>
       ),
       filters: Array.isArray(roles) ? roles.map(role => ({ text: role.displayName, value: role.name })) : [],
       onFilter: (value, record) => record.role === value
@@ -355,6 +475,34 @@ export default function UserPermissions() {
         { text: '停用', value: false }
       ],
       onFilter: (value, record) => record.isActive === value
+    },
+    {
+      title: '业绩统计',
+      key: 'salesStats',
+      render: (_, record) => {
+        if (!isSalesPersonnel(record) || !record.salesStats) {
+          return <Text type="secondary" className="text-xs">-</Text>
+        }
+        
+        return (
+          <div className="text-xs space-y-1">
+            <div className="flex justify-between">
+              <span>总销售:</span>
+              <span className="font-medium">{record.salesStats.totalSales}套</span>
+            </div>
+            <div className="flex justify-between">
+              <span>总金额:</span>
+              <span className="font-medium text-green-600">
+                ¥{(record.salesStats.totalAmount / 10000).toFixed(1)}万
+              </span>
+            </div>
+            <div className="flex justify-between text-blue-600">
+              <span>本月:</span>
+              <span>{record.salesStats.currentMonthSales}套</span>
+            </div>
+          </div>
+        )
+      }
     },
     {
       title: '項目權限',
@@ -378,84 +526,51 @@ export default function UserPermissions() {
     {
       title: '操作',
       key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="查看詳情">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewUser(record)}
-            />
-          </Tooltip>
-          <Tooltip title="編輯權限">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => {
-                form.setFieldsValue({
-                  role: record.role,
-                  isActive: record.isActive,
-                  projectIds: record.projectIds
-                })
-                Modal.confirm({
-                  title: '編輯用戶權限',
-                  content: (
-                    <Form
-                      form={form}
-                      layout="vertical"
-                      className="mt-4"
-                    >
-                      <Form.Item
-                        name="role"
-                        label="角色"
-                        rules={[{ required: true, message: '請選擇角色' }]}
-                      >
-                        <Select placeholder="選擇角色">
-                          {Array.isArray(roles) && roles.map(role => (
-                            <Option key={role.name} value={role.name}>
-                              {role.displayName}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                      
-                      <Form.Item
-                        name="isActive"
-                        label="啟用狀態"
-                        valuePropName="checked"
-                      >
-                        <Switch checkedChildren="啟用" unCheckedChildren="停用" />
-                      </Form.Item>
-                      
-                      <Form.Item
-                        name="projectIds"
-                        label="項目權限"
-                      >
-                        <Select
-                          mode="multiple"
-                          placeholder="選擇可訪問的項目"
-                          allowClear
-                        >
-                          {Array.isArray(projects) && projects.map(project => (
-                            <Option key={project.id} value={project.id}>
-                              {project.name}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </Form>
-                  ),
-                  onOk: async () => {
-                    const values = await form.validateFields()
-                    await handleUpdateUser(record.id, values)
-                  },
-                  width: 500
-                })
-              }}
-            />
-          </Tooltip>
-        </Space>
-      )
+      render: (_, record) => {
+        // 检查当前用户是否有权限编辑销售人员
+        const canEditSalesPersonnel = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN'
+        const canEdit = !isSalesPersonnel(record) || canEditSalesPersonnel
+
+        return (
+          <Space>
+            <Tooltip title="查看詳情">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewUser(record)}
+              />
+            </Tooltip>
+            
+            {canEdit ? (
+              <Tooltip title="編輯權限">
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEditUser(record)}
+                />
+              </Tooltip>
+            ) : (
+              <Tooltip title="只有管理员可以编辑销售人员">
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  disabled
+                />
+              </Tooltip>
+            )}
+
+            {isSalesPersonnel(record) && canEditSalesPersonnel && (
+              <Tooltip title="销售数据">
+                <Button
+                  type="text"
+                  icon={<TeamOutlined />}
+                  onClick={() => handleViewSalesData(record)}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        )
+      }
     }
   ]
 
@@ -689,6 +804,196 @@ export default function UserPermissions() {
           </div>
         )}
       </Drawer>
+
+      {/* 编辑用户模态框 */}
+      <Modal
+        title={`编辑用户 - ${selectedUser?.name || ''}`}
+        open={editModalVisible}
+        onCancel={() => {
+          setEditModalVisible(false)
+          editForm.resetFields()
+        }}
+        footer={null}
+        width={800}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleSaveUser}
+          className="mt-4"
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="姓名"
+                rules={[{ required: true, message: '请输入姓名' }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="email"
+                label="邮箱"
+                rules={[
+                  { required: true, message: '请输入邮箱' },
+                  { type: 'email', message: '请输入有效的邮箱' }
+                ]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="phone" label="电话">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="employeeNo" label="工号">
+                <Input disabled={!['SALES_MANAGER', 'SALES_PERSON'].includes(editForm.getFieldValue('role'))} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="department" label="部门">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="position" label="职位">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="role"
+                label="角色"
+                rules={[{ required: true, message: '请选择角色' }]}
+              >
+                <Select>
+                  {roles.map(role => (
+                    <Option key={role.name} value={role.name}>
+                      {role.displayName}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="isActive" label="启用状态" valuePropName="checked">
+                <Switch checkedChildren="启用" unCheckedChildren="停用" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="projectIds" label="项目权限">
+            <Select mode="multiple" placeholder="选择可访问的项目">
+              {projects.map(project => (
+                <Option key={project.id} value={project.id}>
+                  {project.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item name="remark" label="备注">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+
+          <div className="flex justify-end space-x-2">
+            <Button onClick={() => setEditModalVisible(false)}>
+              取消
+            </Button>
+            <Button type="primary" htmlType="submit">
+              保存
+            </Button>
+          </div>
+        </Form>
+      </Modal>
+
+      {/* 销售数据模态框 */}
+      <Modal
+        title={`销售数据 - ${selectedUser?.name || ''}`}
+        open={salesDataModalVisible}
+        onCancel={() => setSalesDataModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setSalesDataModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={600}
+      >
+        {selectedUser?.salesStats ? (
+          <div className="space-y-4">
+            <Row gutter={16}>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="总销售套数"
+                    value={selectedUser.salesStats.totalSales}
+                    suffix="套"
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="总销售金额"
+                    value={(selectedUser.salesStats.totalAmount / 10000).toFixed(1)}
+                    suffix="万元"
+                    precision={1}
+                  />
+                </Card>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="本月销售套数"
+                    value={selectedUser.salesStats.currentMonthSales}
+                    suffix="套"
+                  />
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small">
+                  <Statistic
+                    title="本月销售金额"
+                    value={(selectedUser.salesStats.currentMonthAmount / 10000).toFixed(1)}
+                    suffix="万元"
+                    precision={1}
+                  />
+                </Card>
+              </Col>
+            </Row>
+            <Divider />
+            <div>
+              <Text strong>工号：</Text>
+              <Text>{selectedUser.employeeNo}</Text>
+            </div>
+            {selectedUser.remark && (
+              <div>
+                <Text strong>备注：</Text>
+                <Text>{selectedUser.remark}</Text>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Text type="secondary">暂无销售数据</Text>
+          </div>
+        )}
+      </Modal>
 
       {/* 批量操作模態框 */}
       <Modal
