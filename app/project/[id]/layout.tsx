@@ -134,36 +134,29 @@ const getMenuItems = (projectId: string): MenuItem[] => [
         label: '系統管理',
         children: [
             {
-                key: 'permissions',
-                icon: <SafetyOutlined/>,
-                label: '權限管理',
-                children: [
-                    {
-                        key: 'permission-menus',
-                        icon: <MenuOutlined/>,
-                        label: <Link href={`/project/${projectId}/admin/permissions/menus`}>菜單權限</Link>,
-                    },
-                    {
-                        key: 'permission-buttons',
-                        icon: <KeyOutlined/>,
-                        label: <Link href={`/project/${projectId}/admin/permissions/buttons`}>按鈕權限</Link>,
-                    },
-                    {
-                        key: 'permission-users',
-                        icon: <UserOutlined/>,
-                        label: <Link href={`/project/${projectId}/admin/permissions/users`}>用戶權限</Link>,
-                    },
-                    {
-                        key: 'permission-roles',
-                        icon: <TeamOutlined/>,
-                        label: <Link href={`/project/${projectId}/admin/permissions/roles`}>角色管理</Link>,
-                    },
-                    {
-                        key: 'audit-logs',
-                        icon: <AuditOutlined/>,
-                        label: <Link href={`/project/${projectId}/admin/permissions/audit-logs`}>審計日誌</Link>,
-                    },
-                ],
+                key: 'permission-menus',
+                icon: <MenuOutlined/>,
+                label: <Link href={`/project/${projectId}/admin/permissions/menus`}>菜單權限</Link>,
+            },
+            {
+                key: 'permission-buttons',
+                icon: <KeyOutlined/>,
+                label: <Link href={`/project/${projectId}/admin/permissions/buttons`}>按鈕權限</Link>,
+            },
+            {
+                key: 'permission-users',
+                icon: <UserOutlined/>,
+                label: <Link href={`/project/${projectId}/admin/permissions/users`}>用戶權限</Link>,
+            },
+            {
+                key: 'permission-roles',
+                icon: <TeamOutlined/>,
+                label: <Link href={`/project/${projectId}/admin/permissions/roles`}>角色管理</Link>,
+            },
+            {
+                key: 'audit-logs',
+                icon: <AuditOutlined/>,
+                label: <Link href={`/project/${projectId}/admin/permissions/audit-logs`}>審計日誌</Link>,
             },
         ],
     },

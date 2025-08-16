@@ -26,6 +26,7 @@
 - **[菜单树展开优化](./MENU_TREE_EXPANSION_OPTIMIZATION.md)** - 菜单树显示宽度和内容优化
 - **[侧边栏菜单集成](./SIDEBAR_MENU_INTEGRATION.md)** - 权限管理集成到主菜单
 - **[权限布局清理](./PERMISSIONS_LAYOUT_CLEANUP.md)** - 移除冗余菜单显示
+- **[菜单结构调整](./MENU_STRUCTURE_ADJUSTMENT.md)** - 将权限管理子菜单移至系统管理下
 
 ### 📊 数据管理
 - **[API数据生成指南](./API_DATA_GENERATION_GUIDE.md)** - 通过API生成测试数据
