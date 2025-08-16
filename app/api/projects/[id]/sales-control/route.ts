@@ -3,9 +3,11 @@ import { prisma } from '@/lib/db'
 import type { SalesControl } from '@/lib/db'
 import { withErrorHandler, createSuccessResponse, createNotFoundError, createValidationError } from '@/lib/error-handler'
 import { createProtectedApiHandler } from '@/lib/auth-utils'
+import { withAutoPermissionCheck } from '@/lib/permission-middleware'
 
 // GET - 獲取項目的銷控數據
-export const GET = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = withAutoPermissionCheck(
+  createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {
     const projectId = parseInt(params.id)
     const { searchParams } = new URL(request.url)
     const building = searchParams.get('building')
@@ -198,7 +200,11 @@ export const GET = createProtectedApiHandler(async (request: NextRequest, { para
       total: Number(total),
       totalPages: Math.ceil(Number(total) / pageSize)
     })
-}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON'])
+}, ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON']),
+  {
+    allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_PERSON']
+  }
+)
 
 // POST - 創建新的銷控記錄
 export const POST = createProtectedApiHandler(async (request: NextRequest, { params }: { params: { id: string } }) => {

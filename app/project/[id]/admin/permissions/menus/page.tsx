@@ -37,7 +37,11 @@ import {
   EyeOutlined,
   BranchesOutlined,
   MinusOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  ApiOutlined,
+  KeyOutlined,
+  ScanOutlined,
+  ReloadOutlined
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { DataNode } from 'antd/es/tree'
@@ -68,6 +72,18 @@ interface Menu {
       displayName: string
     }
   }>
+  buttonPermissions?: ButtonPermission[]
+  createdAt: string
+  updatedAt: string
+}
+
+interface ButtonPermission {
+  id: number
+  name: string
+  identifier: string
+  description?: string
+  isActive: boolean
+  menuId: number
   createdAt: string
   updatedAt: string
 }
@@ -94,6 +110,8 @@ export default function MenuPermissions() {
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null)
   const [permissionMatrix, setPermissionMatrix] = useState<PermissionMatrix>({})
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
+  const [scanningPermissions, setScanningPermissions] = useState(false)
+  const [buttonPermissions, setButtonPermissions] = useState<ButtonPermission[]>([])
   const [form] = Form.useForm()
 
   // 獲取菜單列表
@@ -128,6 +146,52 @@ export default function MenuPermissions() {
     }
   }
 
+  // 扫描API权限
+  const scanApiPermissions = async () => {
+    try {
+      setScanningPermissions(true)
+      message.loading('正在扫描API权限...', 0)
+      
+      const response = await fetch('/api/admin/permissions/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await response.json()
+      message.destroy()
+      
+      if (data.success) {
+        message.success(`成功扫描并保存了 ${data.data.count} 个API权限`)
+        // 重新获取菜单数据以显示新的按钮权限
+        await fetchMenus()
+      } else {
+        message.error(data.error || 'API权限扫描失败')
+      }
+    } catch (error) {
+      message.destroy()
+      console.error('Error scanning API permissions:', error)
+      message.error('API权限扫描失败')
+    } finally {
+      setScanningPermissions(false)
+    }
+  }
+
+  // 获取按钮权限列表
+  const fetchButtonPermissions = async () => {
+    try {
+      const response = await fetch('/api/admin/permissions/buttons')
+      const data = await response.json()
+      
+      if (data.success) {
+        setButtonPermissions(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching button permissions:', error)
+    }
+  }
+
   // 獲取權限矩陣
   const fetchPermissionMatrix = async () => {
     try {
@@ -156,6 +220,7 @@ export default function MenuPermissions() {
   useEffect(() => {
     fetchMenus()
     fetchRoles()
+    fetchButtonPermissions()
   }, [])
 
   useEffect(() => {
@@ -316,7 +381,12 @@ export default function MenuPermissions() {
                   </span>
                   {node.rolePermissions && node.rolePermissions.length > 0 && (
                     <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">
-                      权限: {node.rolePermissions.length}个角色
+                      角色权限: {node.rolePermissions.length}个
+                    </span>
+                  )}
+                  {node.buttonPermissions && node.buttonPermissions.length > 0 && (
+                    <span className="bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded text-xs">
+                      按钮权限: {node.buttonPermissions.length}个
                     </span>
                   )}
                 </div>
@@ -527,6 +597,15 @@ export default function MenuPermissions() {
                     className="hover:bg-gray-50 px-3 py-1"
                   >
                     全部收起
+                  </Button>
+                  <Button 
+                    type="default"
+                    icon={<ScanOutlined />}
+                    loading={scanningPermissions}
+                    onClick={scanApiPermissions}
+                    className="bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100"
+                  >
+                    扫描API权限
                   </Button>
                   <Button 
                     type="primary"

@@ -45,23 +45,27 @@ interface Role {
   name: string
   displayName: string
   description: string
-  isSystem: boolean
+  isSystem?: boolean
   isActive: boolean
-  userCount: number
-  menuPermissions: Array<{
+  userCount?: number
+  menuPermissions?: Array<{
     menu: {
       id: number
       name: string
       displayName: string
     }
   }>
-  buttonPermissions: Array<{
+  buttonPermissions?: Array<{
     buttonPermission: {
       id: number
       name: string
       displayName: string
     }
   }>
+  _count?: {
+    menuPermissions: number
+    buttonPermissions: number
+  }
   createdAt: string
   updatedAt: string
 }
@@ -315,7 +319,7 @@ export default function RolesManagement() {
       dataIndex: 'userCount',
       key: 'userCount',
       render: (count) => (
-        <Badge count={count} style={{ backgroundColor: '#52c41a' }} />
+        <Badge count={count || 0} style={{ backgroundColor: '#52c41a' }} />
       )
     },
     {
@@ -325,12 +329,12 @@ export default function RolesManagement() {
         <Space>
           <Tooltip title="菜單權限">
             <Tag icon={<MenuOutlined />} color="blue">
-              {record.menuPermissions.length}
+              {record._count?.menuPermissions || record.menuPermissions?.length || 0}
             </Tag>
           </Tooltip>
           <Tooltip title="按鈕權限">
             <Tag icon={<KeyOutlined />} color="green">
-              {record.buttonPermissions.length}
+              {record._count?.buttonPermissions || record.buttonPermissions?.length || 0}
             </Tag>
           </Tooltip>
         </Space>

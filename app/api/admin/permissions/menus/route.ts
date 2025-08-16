@@ -71,6 +71,17 @@ export async function GET(request: NextRequest) {
                   name: true,
                   displayName: true
                 }
+              },
+              buttonPermissions: {
+                select: {
+                  id: true,
+                  name: true,
+                  identifier: true,
+                  description: true,
+                  isActive: true,
+                  createdAt: true,
+                  updatedAt: true
+                }
               }
             }
           },
@@ -83,6 +94,17 @@ export async function GET(request: NextRequest) {
                   displayName: true
                 }
               }
+            }
+          },
+          buttonPermissions: {
+            select: {
+              id: true,
+              name: true,
+              identifier: true,
+              description: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true
             }
           }
         }
