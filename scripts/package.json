@@ -1,9 +1,18 @@
 {
-  "name": "pdf-test",
+  "name": "data-generation-scripts",
   "version": "1.0.0",
-  "type": "module",
+  "description": "API数据生成脚本",
+  "main": "generate-test-data-via-api.js",
+  "scripts": {
+    "generate": "node generate-test-data-via-api.js",
+    "quick": "node quick-generate-data.js",
+    "clear": "node generate-test-data-via-api.js --clear",
+    "help": "node generate-test-data-via-api.js --help"
+  },
   "dependencies": {
-    "jspdf": "^2.5.2",
-    "jspdf-autotable": "^5.0.2"
-  }
+    "node-fetch": "^2.6.7"
+  },
+  "keywords": ["api", "data-generation", "test-data"],
+  "author": "System",
+  "license": "MIT"
 }
